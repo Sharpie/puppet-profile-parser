@@ -1,9 +1,39 @@
 #!/usr/bin/env ruby
 
 require 'terminal-table'
-require 'colored'
 
 module PuppetProfiler
+  # Utility functions for terminal interaction
+  module Tty
+    COLOR_CODES = {
+      red: 31,
+      green: 32,
+      yellow: 33,
+    }.freeze
+
+    def self.windows?
+      @is_windows ||= (::File::ALT_SEPARATOR == "\\")
+    end
+
+    def self.tty?
+      @is_tty ||= (!windows? && $stdout.isatty)
+    end
+
+    def self.colorize(color, string)
+      if tty?
+        "\033[#{COLOR_CODES[color]}m#{string}\033[0m"
+      else
+        string
+      end
+    end
+
+    COLOR_CODES.keys.each do |name|
+      define_singleton_method(name) do |string|
+        colorize(name, string)
+      end
+    end
+  end
+
   class Namespace
     attr_accessor :object
 
@@ -37,7 +67,7 @@ module PuppetProfiler
 
     def display
       print "  " * @namespace.size
-      print "#{@namespace.join('.').green} "
+      print "#{Tty.green(@namespace.join('.'))} "
       print @object.inspect
       puts
       @children.values.each(&:display)
@@ -62,7 +92,7 @@ module PuppetProfiler
     end
 
     def inspect
-      time = "(#{@time} seconds)".yellow
+      time = Tty.yellow("(#{@time} seconds)")
       "function #{@function} #{time}"
     end
   end
@@ -84,7 +114,7 @@ module PuppetProfiler
     end
 
     def inspect
-      time = "(#{@time} seconds)".yellow
+      time = Tty.yellow("(#{@time} seconds)")
       "resource #{@type}[#{@title}] #{time}"
     end
   end
@@ -101,7 +131,7 @@ module PuppetProfiler
     end
 
     def inspect
-      time = "(#{@time} seconds)".yellow
+      time = Tty.yellow("(#{@time} seconds)")
       "#{@name} #{time}"
     end
   end
