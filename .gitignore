@@ -1,1 +1,3 @@
+.bundle/
 Gemfile.lock
+Gemfile.local
