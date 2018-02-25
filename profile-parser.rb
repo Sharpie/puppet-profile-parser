@@ -184,13 +184,17 @@ module PuppetProfiler
                File.open(file, 'r')
              end
 
-        io.each_line do |line|
-          next unless line.match(/PROFILE/)
+        begin
+          io.each_line do |line|
+            next unless line.match(/PROFILE/)
 
-          # Strip off leader
-          if (match = line.match(/(PROFILE.*)$/))
-            things << parse(match[1])
+            # Strip off leader
+            if (match = line.match(/(PROFILE.*)$/))
+              things << parse(match[1])
+            end
           end
+        ensure
+          io.close
         end
       end
 
