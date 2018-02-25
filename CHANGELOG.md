@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - Apache 2 license.
 
+  - Support for reading gzipped log files.
+
 ### Removed
 
   - Dependency on the `colored` gem.

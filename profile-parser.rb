@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'zlib'
+
 require 'terminal-table'
 
 module PuppetProfiler
@@ -137,6 +139,10 @@ module PuppetProfiler
   end
 
   class CLI
+    def initialize(argv)
+      @log_files = argv
+    end
+
     def parse(line)
       case line
       when /Called/
@@ -170,12 +176,21 @@ module PuppetProfiler
     def run
       things = []
 
-      ARGF.each_line do |line|
-        next unless line.match(/PROFILE/)
+      @log_files.each do |file|
+        io = case File.extname(file)
+             when '.gz'
+               Zlib::GzipReader.open(file)
+             else
+               File.open(file, 'r')
+             end
 
-        # Strip off leader
-        if (match = line.match(/(PROFILE.*)$/))
-          things << parse(match[1])
+        io.each_line do |line|
+          next unless line.match(/PROFILE/)
+
+          # Strip off leader
+          if (match = line.match(/(PROFILE.*)$/))
+            things << parse(match[1])
+          end
         end
       end
 
@@ -198,5 +213,5 @@ end
 
 
 if __FILE__ == File.expand_path($PROGRAM_NAME)
-  PuppetProfiler::CLI.new.run
+  PuppetProfiler::CLI.new(ARGV).run
 end
