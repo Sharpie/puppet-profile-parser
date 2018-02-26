@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - Support for reading gzipped log files.
 
+### Changed
+
+  - Profiled events are now separated by request and Java thread id. Incomplete
+    profiles are dropped.
+
 ### Removed
 
   - Dependency on the `colored` gem.

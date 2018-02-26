@@ -1,0 +1,10 @@
+# Interleaved profiles from two threads
+2018-02-25 18:31:48,735 INFO  [123] [puppetserver] Puppet PROFILE [30880] 1.1 Rendered result in Puppet::Network::Format[json]: took 0.0030 seconds
+2018-02-25 18:31:52,260 INFO  [456] [puppetserver] Puppet PROFILE [30900] 1.1.1 Called template: took 0.0030 seconds
+2018-02-25 18:31:50,946 INFO  [456] [puppetserver] Puppet PROFILE [30900] 1.1 Evaluated resource Class[Puppet_enterprise::Mcollective::Server::Facter]: took 0.0940 seconds
+2018-02-25 18:31:48,735 INFO  [123] [puppetserver] Puppet PROFILE [30880] 1.2 Sent response: took 0.0000 seconds
+2018-02-25 18:31:52,732 INFO  [456] [puppetserver] Puppet PROFILE [30900] 1 Processed request POST /puppet/v3/catalog/pe-20181nightly-agent-replica.puppetdebug.vlan: took 1.7970 seconds
+2018-02-25 18:31:48,736 INFO  [123] [puppetserver] Puppet PROFILE [30880] 1 Processed request GET /puppet/v3/node/pe-20181nightly-agent-replica.puppetdebug.vlan: took 0.1370 seconds
+
+# Incomplete profile (no span with id "1")
+2018-02-25 18:31:54,524 INFO  [123] [puppetserver] Puppet PROFILE [33676] 1.4.10.1.1.8.6 map: took 0.0030 seconds

@@ -138,6 +138,101 @@ module PuppetProfiler
     end
   end
 
+  class TraceParser
+    def initialize
+      @spans = []
+    end
+
+    def parse(line)
+      # Finch originally called these "slices", but we'll rename to "span"
+      # eventually in order to match OpenTracing terminology.
+      span = case line
+             when /Called/
+               FunctionSlice.new.parse(line)
+             when /Evaluated resource/
+               ResourceSlice.new.parse(line)
+             else
+               OtherSlice.new.parse(line)
+             end
+
+      if span.id == '1'
+        # We've hit the root of a profile, which gets logged last.
+        trace = Namespace.new('1', span)
+
+        @spans.each do |child|
+          trace.add(child.id, child)
+        end
+
+        # Re-set for parsing a new profile and return the completed trace.
+        @spans = []
+
+        return trace
+      else
+        @spans << span
+
+        # Return nil to signal we haven't parsed a complete profile yet.
+        return nil
+      end
+    end
+  end
+
+  # Top-level parser for extracting profile data from logs
+  class LogParser
+    # Regex for parsing ISO 8601 datestamps
+    #
+    # Basically the regex used by {Time.iso8601} with some extensions.
+    #
+    # @see https://ruby-doc.org/stdlib-2.4.3/libdoc/time/rdoc/Time.html#method-i-xmlschema
+    ISO_8601 = /(?:\d+)-(?:\d\d)-(?:\d\d)
+                [T\s]
+                (?:\d\d):(?:\d\d):(?:\d\d)
+                (?:[\.,]\d+)?
+                (?:Z|[+-]\d\d:\d\d)?/ix
+
+    # Regex for parsing Puppet Server logs
+    #
+    # Matches log lines that use the default logback pattern for Puppet Server:
+    #
+    #     %d %-5p [%t] [%c{2}] %m%n
+    DEFAULT_PARSER = /^\s*
+                      (?<timestamp>#{ISO_8601})\s+
+                      (?<log_level>[A-Z]+)\s+
+                      \[(?<thread_id>\S+)\]\s+
+                      \[(?<java_class>\S+)\]\s+
+                      (?<message>.*)$/x
+
+    attr_reader :traces
+
+    def initialize
+      @traces = []
+      @trace_parsers = Hash.new {|h,k| h[k] = TraceParser.new }
+
+      # TODO: Could be configurable. Would be a lot of work to implement
+      # a reasonable intersection of Java and Passenger formats.
+      #
+      # The "PROFILE [<trace_id>] ..." messages also include an id which
+      # is set to the Ruby object id created to handle each HTTP request.
+      # Could switch to using that instead of the Java thread id.
+      @log_parser = DEFAULT_PARSER
+    end
+
+    def parse_line(log_line)
+      data = @log_parser.match(log_line)
+
+      if data.nil?
+        $stderr.puts("WARN Could not parse log line: #{log_line})")
+        return
+      end
+
+      trace_parser = @trace_parsers[data[:thread_id]]
+      result = trace_parser.parse(data[:message])
+
+      # The TraceParser returns nil unless the log lines parsed so far
+      # add up to a complete profile.
+      traces << result unless result.nil?
+    end
+  end
+
   class CLI
     def initialize(argv)
       @log_files = argv
@@ -175,6 +270,7 @@ module PuppetProfiler
 
     def run
       things = []
+      parser = LogParser.new
 
       @log_files.each do |file|
         io = case File.extname(file)
@@ -187,6 +283,8 @@ module PuppetProfiler
         begin
           io.each_line do |line|
             next unless line.match(/PROFILE/)
+
+            parser.parse_line(line)
 
             # Strip off leader
             if (match = line.match(/(PROFILE.*)$/))
@@ -204,7 +302,10 @@ module PuppetProfiler
         root.add(thing.id, thing)
       end
 
-      root.display
+      parser.traces.each do |trace|
+        trace.display
+        $stdout.write("\n\n")
+      end
 
       funcalls = things.select { |thing| thing.is_a? FunctionSlice }
       resevals = things.select { |thing| thing.is_a? ResourceSlice }
