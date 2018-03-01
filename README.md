@@ -9,13 +9,11 @@ Tools for parsing profile information from Puppet Server logs.
 Installation
 ------------
 
-The tools in this repository require some Ruby gems to function. These
-requirements are listed in the [Gemfile](Gemfile) and can be installed
-using [Bundler][bundler-web]:
+The tool in this repository is the `profile-parser.rb` script. This script
+has no dependencies and can be run from any location where a Ruby interpreter
+is present on the `PATH`.
 
-    bundle install --without development
-
-  [bundler-web]: http://bundler.io/#getting-started
+Ruby 2.1 or newer is recommended.
 
 
 Usage
