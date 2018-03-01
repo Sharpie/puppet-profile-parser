@@ -2,8 +2,6 @@
 
 require 'zlib'
 
-require 'terminal-table'
-
 module PuppetProfiler
   # Utility functions for terminal interaction
   module Tty
@@ -37,7 +35,10 @@ module PuppetProfiler
   end
 
   class Namespace
-    attr_accessor :object
+    include Enumerable
+
+    attr_reader :namespace
+    attr_reader :object
 
     def initialize(namespace, object)
       @namespace = namespace.split('.')
@@ -67,12 +68,12 @@ module PuppetProfiler
       @children[id] ||= Namespace.new([@namespace, id].flatten.join('.'), nil)
     end
 
-    def display
-      print "  " * @namespace.size
-      print "#{Tty.green(@namespace.join('.'))} "
-      print @object.inspect
-      puts
-      @children.values.each(&:display)
+    def each
+      yield self
+
+      @children.each do |_, child|
+        child.each {|grandchild| yield grandchild }
+      end
     end
   end
 
@@ -233,43 +234,78 @@ module PuppetProfiler
     end
   end
 
-  class CLI
-    def initialize(argv)
-      @log_files = argv
+  class HumanOutput
+    ELLIPSIS = "\u2026".freeze
+
+    def initialize(output)
+      @output = output
     end
 
-    def parse(line)
-      case line
-      when /Called/
-        FunctionSlice.new.parse(line)
-      when /Evaluated resource/
-        ResourceSlice.new.parse(line)
+    def display(traces)
+      traces.each do |trace|
+        trace.each do |span|
+          indent = " " * span.namespace.length
+
+          @output.write(indent)
+          @output.write("#{Tty.green(span.namespace.join('.'))} ")
+          @output.write(span.object.inspect)
+          @output.write("\n")
+        end
+
+        @output.write("\n\n")
+      end
+
+      # FIXME: Eliminate double iteration.
+      funcalls = traces.flat_map do |trace|
+        trace.select {|span| span.object.is_a?(FunctionSlice) }.map(&:object)
+      end
+      resevals = traces.flat_map do |trace|
+        trace.select {|span| span.object.is_a?(ResourceSlice) }.map(&:object)
+      end
+
+      process_group("Function calls", funcalls)
+      process_group("Resource evaluations", resevals)
+    end
+
+    private
+
+    def truncate(str, width)
+      if (str.length <= width)
+        str
       else
-        OtherSlice.new.parse(line)
+        str[0..(width-2)] + ELLIPSIS
       end
     end
 
     def process_group(title, slices)
-      total = 0.0
-      itemized_totals = Hash.new { |h, k| h[k] = 0.0 }
+      total = 0
+      itemized_totals = Hash.new { |h, k| h[k] = 0 }
 
       slices.each do |slice|
-        total += slice.time
-        itemized_totals[slice.name] += slice.time
+        total += Integer(slice.time * 1000)
+        itemized_totals[slice.name] += Integer(slice.time * 1000)
       end
 
       rows = itemized_totals.to_a.sort { |a, b| b[1] <=> a[1] }
 
-      table = Terminal::Table.new(:headings => ["Source", "Time"], :rows => rows)
+      @output.puts "\n--- #{title} ---"
+      @output.puts "Total time: #{total} ms"
+      @output.puts "Itemized:"
+      @output.printf("%-50s|%-20s\n", 'Source', 'Time')
+      @output.puts(('-' * 50) + '+' + ('-' * 20))
+      rows.each do |k, v|
+        @output.printf("%-50s|%i ms\n", truncate(k, 50), v)
+      end
+    end
+  end
 
-      puts "--- #{title} ---"
-      puts "Total time: #{total}"
-      puts "Itemized:"
-      puts table
+  class CLI
+    def initialize(argv)
+      @log_files = argv
+      @outputter = HumanOutput.new($stdout)
     end
 
     def run
-      things = []
       parser = LogParser.new
 
       @log_files.each do |file|
@@ -285,38 +321,21 @@ module PuppetProfiler
             next unless line.match(/PROFILE/)
 
             parser.parse_line(line)
-
-            # Strip off leader
-            if (match = line.match(/(PROFILE.*)$/))
-              things << parse(match[1])
-            end
           end
         ensure
           io.close
         end
       end
 
-      root = Namespace.new('1', nil)
-
-      things.each do |thing|
-        root.add(thing.id, thing)
-      end
-
-      parser.traces.each do |trace|
-        trace.display
-        $stdout.write("\n\n")
-      end
-
-      funcalls = things.select { |thing| thing.is_a? FunctionSlice }
-      resevals = things.select { |thing| thing.is_a? ResourceSlice }
-
-      process_group("Function calls", funcalls)
-      process_group("Resource evaluations", resevals)
+      @outputter.display(parser.traces)
     end
   end
 end
 
-
-if __FILE__ == File.expand_path($PROGRAM_NAME)
-  PuppetProfiler::CLI.new(ARGV).run
+if File.expand_path(__FILE__) == File.expand_path($PROGRAM_NAME)
+  begin
+    PuppetProfiler::CLI.new(ARGV).run
+  rescue => e
+    $stderr.puts("ERROR #{e.class}: #{e.message}")
+  end
 end

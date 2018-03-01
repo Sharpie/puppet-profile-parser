@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Removed
 
-  - Dependency on the `colored` gem.
+  - Dependency on the `colored` and `terminal-table` gems.
 
   - The `catalog-analyzer.rb` script has been removed. It may return in the
     future, but for now the project will focus on parsing profile data.
