@@ -291,10 +291,13 @@ module PuppetProfiler
       @output.puts "\n--- #{title} ---"
       @output.puts "Total time: #{total} ms"
       @output.puts "Itemized:"
-      @output.printf("%-50s|%-20s\n", 'Source', 'Time')
-      @output.puts(('-' * 50) + '+' + ('-' * 20))
+
+      # NOTE: Table formatting fixed to 72 columns. Adjusting this based on
+      # screen size is possible, but not worth the complexity at this time.
+      @output.printf("%-50s | %-19s\n", 'Source', 'Time')
+      @output.puts(('-' * 50) + '-+-' + ('-' * 19))
       rows.each do |k, v|
-        @output.printf("%-50s|%i ms\n", truncate(k, 50), v)
+        @output.printf("%-50s | %i ms\n", truncate(k, 50), v)
       end
     end
   end
