@@ -47,6 +47,8 @@ module PuppetProfiler
     attr_reader :exclusive_time
     # Milliseconds spent on this operation, including child operations
     attr_reader :inclusive_time
+    # Array of operation names
+    attr_reader :stack
 
     def initialize(namespace, object)
       @namespace = namespace.split('.')
@@ -90,8 +92,10 @@ module PuppetProfiler
     #
     # This method should be called once all child spans have been added
     # in order to compute summary statistics for the entire trace.
-    def finalize!
-      @children.each {|_, child| child.finalize! }
+    def finalize!(parent_stack = [])
+      @stack = parent_stack + [object.name]
+
+      @children.each {|_, child| child.finalize!(@stack) }
 
       @inclusive_time = Integer(object.time * 1000)
 
@@ -125,7 +129,6 @@ module PuppetProfiler
 
   class ResourceSlice < Slice
     attr_reader :type
-    alias name type
     attr_reader :title
 
     def parse(line)
@@ -137,6 +140,14 @@ module PuppetProfiler
       @time  = match[4].to_f
 
       self
+    end
+
+    def name
+      @name ||= if (@type == 'Class')
+                  "#{@type}[#{@title}]"
+                else
+                  @type
+                end
     end
 
     def inspect
@@ -256,6 +267,27 @@ module PuppetProfiler
     end
   end
 
+  class FlameGraphOutput
+    def initialize(output)
+      @output = output
+    end
+
+    def display(traces)
+      traces.each do |trace|
+        trace.each do |span|
+          span_time = span.exclusive_time
+
+          next if span_time.zero?
+
+          # The FlameGraph script uses ; as a separator for namespace segments.
+          span_label = span.stack.map {|l| l.gsub(';', '') }.join(';')
+
+          @output.puts("#{span_label} #{span_time}")
+        end
+      end
+    end
+  end
+
   class HumanOutput
     ELLIPSIS = "\u2026".freeze
 
@@ -342,10 +374,13 @@ module PuppetProfiler
 
         parser.on('-f', '--format FORMAT', String,
                   'Output format to use. One of:',
-                  '    human (default)') do |format|
+                  '    human (default)',
+                  '    flamegraph') do |format|
           case format
           when 'human'
             @outputter = HumanOutput.new($stdout)
+          when 'flamegraph'
+            @outputter = FlameGraphOutput.new($stdout)
           else
             raise ArgumentError, "#{format} is not a supported output format. See --help for details."
           end

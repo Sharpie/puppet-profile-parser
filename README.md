@@ -49,3 +49,10 @@ The `profile-parser.rb` script expects list of Puppet Server
 log files containing `PROFILE` entries:
 
     ./profile-parser.rb .../path/to/puppetserver.log [.../more/logs]
+
+The tool defaults to a human-readable summary. Additional formats can be
+selected using the `--format` flag. For example, to generate output for
+[brendangregg/FlameGraph](https://github.com/brendangregg/FlameGraph):
+
+    ./profile-parser.rb --format flamegraph puppetserver.log | \
+      path/to/flamegraph.pl --countname ms > puppet_profile.svg
