@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'zlib'
+require 'optparse'
 
 module PuppetProfiler
   # Utility functions for terminal interaction
@@ -332,12 +333,45 @@ module PuppetProfiler
   end
 
   class CLI
-    def initialize(argv)
-      @log_files = argv
-      @outputter = HumanOutput.new($stdout)
+    def initialize(argv = [])
+      @log_files = []
+      @outputter = nil
+
+      @optparser = OptionParser.new do |parser|
+        parser.banner = "Usage: puppet-profile-parser [options] puppetserver.log [...]"
+
+        parser.on('-f', '--format FORMAT', String,
+                  'Output format to use. One of:',
+                  '    human (default)') do |format|
+          case format
+          when 'human'
+            @outputter = HumanOutput.new($stdout)
+          else
+            raise ArgumentError, "#{format} is not a supported output format. See --help for details."
+          end
+        end
+
+        parser.on_tail('-h', '--help', 'Show help') do
+          $stdout.puts(parser.help)
+          exit 0
+        end
+      end
+
+      args = argv.dup
+      @optparser.parse!(args)
+
+      # parse! consumes all --flags and their arguments leaving
+      # file names behind.
+      @log_files += args
+      @outputter ||= HumanOutput.new($stdout)
     end
 
     def run
+      if @log_files.empty?
+        $stdout.puts(@optparser.help)
+        exit 0
+      end
+
       parser = LogParser.new
 
       @log_files.each do |file|
