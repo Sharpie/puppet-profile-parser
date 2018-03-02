@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## [Unreleased]
+
+No unreleased changes.
+
+
+## [0.1.0] - 2018-03-02
 
 ### Added
 
@@ -15,10 +21,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - Support for reading gzipped log files.
 
+  - Support for FlameGraph output.
+
 ### Changed
 
   - Profiled events are now separated by request and Java thread id. Incomplete
     profiles are dropped.
+
+  - Inclusive and exclusive times are computed for each profile span. Output
+    uses exclisive time so that hot spots aren't hidden by spans double
+    counting the time taken by their children.
 
 ### Removed
 
@@ -28,4 +40,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     future, but for now the project will focus on parsing profile data.
 
 
-[Unreleased]: https://github.com/Sharpie/puppet-profile-parser/compare/170a9ed...HEAD
+## [0.0.1] - 2014-05-19
+
+Initial version by [Adrien Thebo](https://github.com/adrienthebo)
+
+
+[Unreleased]: https://github.com/Sharpie/puppet-profile-parser/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/Sharpie/puppet-profile-parser/compare/0.0.1...0.1.0
+[0.0.1]: https://github.com/Sharpie/puppet-profile-parser/compare/53a9d9f...0.0.1

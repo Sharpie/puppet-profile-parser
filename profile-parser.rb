@@ -4,6 +4,8 @@ require 'zlib'
 require 'optparse'
 
 module PuppetProfiler
+  VERSION = '0.1.0'.freeze
+
   # Utility functions for terminal interaction
   module Tty
     COLOR_CODES = {
@@ -388,6 +390,11 @@ module PuppetProfiler
 
         parser.on_tail('-h', '--help', 'Show help') do
           $stdout.puts(parser.help)
+          exit 0
+        end
+
+        parser.on_tail('--version', 'Show version') do
+          puts VERSION
           exit 0
         end
       end
