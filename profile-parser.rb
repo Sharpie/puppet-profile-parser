@@ -118,8 +118,7 @@ module PuppetProfiler
     end
 
     def inspect
-      time = Tty.yellow("(#{@time} seconds)")
-      "function #{@function} #{time}"
+      "function #{@function}"
     end
   end
 
@@ -140,8 +139,7 @@ module PuppetProfiler
     end
 
     def inspect
-      time = Tty.yellow("(#{@time} seconds)")
-      "resource #{@type}[#{@title}] #{time}"
+      "resource #{@type}[#{@title}]"
     end
   end
 
@@ -157,8 +155,7 @@ module PuppetProfiler
     end
 
     def inspect
-      time = Tty.yellow("(#{@time} seconds)")
-      "#{@name} #{time}"
+      @name
     end
   end
 
@@ -269,11 +266,10 @@ module PuppetProfiler
       traces.each do |trace|
         trace.each do |span|
           indent = " " * span.namespace.length
+          id = Tty.green(span.object.id)
+          time = Tty.yellow("(#{span.inclusive_time} ms)")
 
-          @output.write(indent)
-          @output.write("#{Tty.green(span.namespace.join('.'))} ")
-          @output.write(span.object.inspect)
-          @output.write("\n")
+          @output.puts(indent + [id, span.object.inspect, time].join(' '))
         end
 
         @output.write("\n\n")
