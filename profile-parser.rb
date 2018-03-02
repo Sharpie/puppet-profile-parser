@@ -317,6 +317,8 @@ module PuppetProfiler
       @output.printf("%-50s | %-19s\n", 'Source', 'Time')
       @output.puts(('-' * 50) + '-+-' + ('-' * 19))
       rows.each do |k, v|
+        next if v.zero?
+
         @output.printf("%-50s | %i ms\n", truncate(k, 50), v)
       end
     end
