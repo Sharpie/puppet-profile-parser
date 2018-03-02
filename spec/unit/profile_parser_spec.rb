@@ -42,6 +42,8 @@ describe PuppetProfiler::LogParser do
       end
 
       expect(subject.traces.length).to eq(2)
+      expect(subject.traces.first.inclusive_time).to eq(1500)
+      expect(subject.traces.first.exclusive_time).to eq(1250)
     end
   end
 end

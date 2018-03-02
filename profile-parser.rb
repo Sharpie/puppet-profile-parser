@@ -40,10 +40,19 @@ module PuppetProfiler
     attr_reader :namespace
     attr_reader :object
 
+    # Milliseconds spent on this operation, excluding child operations
+    #
+    # Equal to inclusive_time minus the sum of inclusive_time for children.
+    attr_reader :exclusive_time
+    # Milliseconds spent on this operation, including child operations
+    attr_reader :inclusive_time
+
     def initialize(namespace, object)
       @namespace = namespace.split('.')
       @object    = object
       @children  = {}
+      @exclusive_time = nil
+      @inclusive_time = nil
     end
 
     def add(ns, object)
@@ -74,6 +83,20 @@ module PuppetProfiler
       @children.each do |_, child|
         child.each {|grandchild| yield grandchild }
       end
+    end
+
+    # Compute summary statistics
+    #
+    # This method should be called once all child spans have been added
+    # in order to compute summary statistics for the entire trace.
+    def finalize!
+      @children.each {|_, child| child.finalize! }
+
+      @inclusive_time = Integer(object.time * 1000)
+
+      child_time = @children.inject(0) {|sum, (_, child)| sum + child.inclusive_time }
+      @exclusive_time = @inclusive_time - child_time
+      @exclusive_time = 0 unless @exclusive_time.positive?
     end
   end
 
@@ -129,7 +152,7 @@ module PuppetProfiler
       match = line.match(/PROFILE \[\d+\] ([\d\.]+) (.*): took ([\d\.]+) seconds$/)
       @id = match[1]
       @name = match[2]
-      @time = match[3]
+      @time = match[3].to_f
       self
     end
 
@@ -167,6 +190,7 @@ module PuppetProfiler
         # Re-set for parsing a new profile and return the completed trace.
         @spans = []
 
+        trace.finalize!
         return trace
       else
         @spans << span
