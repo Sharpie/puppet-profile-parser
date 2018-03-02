@@ -275,16 +275,23 @@ module PuppetProfiler
         @output.write("\n\n")
       end
 
-      # FIXME: Eliminate double iteration.
-      funcalls = traces.flat_map do |trace|
-        trace.select {|span| span.object.is_a?(FunctionSlice) }.map(&:object)
-      end
-      resevals = traces.flat_map do |trace|
-        trace.select {|span| span.object.is_a?(ResourceSlice) }.map(&:object)
+      spans = Hash.new {|h,k| h[k] = [] }
+      traces.each_with_object(spans) do |trace, span_map|
+        trace.each do |span|
+          case span.object
+          when FunctionSlice
+            span_map[:functions] << span.object
+          when ResourceSlice
+            span_map[:resources] << span.object
+          when OtherSlice
+            span_map[:other] << span.object
+          end
+        end
       end
 
-      process_group("Function calls", funcalls)
-      process_group("Resource evaluations", resevals)
+      process_group("Function calls", spans[:functions])
+      process_group("Resource evaluations", spans[:resources])
+      process_group("Other evaluations", spans[:other])
     end
 
     private
