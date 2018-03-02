@@ -96,7 +96,7 @@ module PuppetProfiler
 
       child_time = @children.inject(0) {|sum, (_, child)| sum + child.inclusive_time }
       @exclusive_time = @inclusive_time - child_time
-      @exclusive_time = 0 unless @exclusive_time.positive?
+      @exclusive_time = 0 unless (@exclusive_time >= 0)
     end
   end
 
