@@ -313,11 +313,11 @@ module PuppetProfiler
         trace.each do |span|
           case span.object
           when FunctionSlice
-            span_map[:functions] << span.object
+            span_map[:functions] << span
           when ResourceSlice
-            span_map[:resources] << span.object
+            span_map[:resources] << span
           when OtherSlice
-            span_map[:other] << span.object
+            span_map[:other] << span
           end
         end
       end
@@ -337,13 +337,13 @@ module PuppetProfiler
       end
     end
 
-    def process_group(title, slices)
+    def process_group(title, spans)
       total = 0
       itemized_totals = Hash.new { |h, k| h[k] = 0 }
 
-      slices.each do |slice|
-        total += Integer(slice.time * 1000)
-        itemized_totals[slice.name] += Integer(slice.time * 1000)
+      spans.each do |span|
+        total += span.exclusive_time
+        itemized_totals[span.stack.last] += span.exclusive_time
       end
 
       rows = itemized_totals.to_a.sort { |a, b| b[1] <=> a[1] }
