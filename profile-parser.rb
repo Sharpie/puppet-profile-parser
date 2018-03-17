@@ -4,6 +4,7 @@ require 'zlib'
 require 'optparse'
 require 'securerandom'
 require 'csv'
+require 'time'
 
 module PuppetProfiler
   VERSION = '0.1.0'.freeze
@@ -229,15 +230,17 @@ module PuppetProfiler
       @spans = []
     end
 
-    def parse(line)
-      span = case line
-             when /Called/
-               FunctionSpan.new.parse(line)
-             when /Evaluated resource/
-               ResourceSpan.new.parse(line)
-             else
-               OtherSpan.new.parse(line)
-             end
+    def parse(line, metadata)
+      span_class = case line
+                   when /Called/
+                     FunctionSpan
+                   when /Evaluated resource/
+                     ResourceSpan
+                   else
+                     OtherSpan
+                   end
+
+      span = span_class.new(nil, metadata[:timestamp]).parse(line)
 
       if span.id == '1'
         # We've hit the root of a profile, which gets logged last.
@@ -325,15 +328,25 @@ module PuppetProfiler
     end
 
     def parse_line(log_line)
-      data = @log_parser.match(log_line)
+      match = @log_parser.match(log_line)
 
-      if data.nil?
+      if match.nil?
         $stderr.puts("WARN Could not parse log line: #{log_line})")
         return
       end
 
+      data = match.named_captures.map do |k, v|
+               if k == "timestamp"
+                 # Ruby only allows a subset of the ISO8601 string formats.
+                 # Java defaults to printing a format that Ruby doesn't allow.
+                 v = Time.iso8601(v.sub(' ', 'T').sub(',','.'))
+               end
+
+               [k.to_sym, v]
+             end.to_h
+
       trace_parser = @trace_parsers[data[:thread_id]]
-      result = trace_parser.parse(data[:message])
+      result = trace_parser.parse(data[:message], data)
 
       # The TraceParser returns nil unless the log lines parsed so far
       # add up to a complete profile.
