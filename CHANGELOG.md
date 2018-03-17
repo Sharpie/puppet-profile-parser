@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - Each Trace is assigned a random UUID.
 
+  - CSV output format.
+
 ### Changed
 
   - The Namespace class has been re-named to Trace and the Slice classes

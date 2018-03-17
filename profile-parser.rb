@@ -3,6 +3,7 @@
 require 'zlib'
 require 'optparse'
 require 'securerandom'
+require 'csv'
 
 module PuppetProfiler
   VERSION = '0.1.0'.freeze
@@ -115,6 +116,12 @@ module PuppetProfiler
   class Span
     attr_reader :id
     attr_reader :time
+
+    def to_h
+      {id: id,
+       name: self.inspect,
+       time: time}
+    end
   end
 
   class FunctionSpan < Span
@@ -295,6 +302,26 @@ module PuppetProfiler
     end
   end
 
+  class CsvOutput
+    def initialize(output)
+      @output = CSV.new(output)
+      @header_written = false
+    end
+
+    def display(traces)
+      traces.each do |trace|
+        trace.each do |span|
+          unless @header_written
+            @output << span.object.to_h.keys
+            @header_written = true
+          end
+
+          @output << span.object.to_h.values
+        end
+      end
+    end
+  end
+
   class FlameGraphOutput
     def initialize(output)
       @output = output
@@ -409,9 +436,10 @@ module PuppetProfiler
         parser.on('-f', '--format FORMAT', String,
                   'Output format to use. One of:',
                   '    human (default)',
+                  '    csv',
                   '    flamegraph') do |format|
           @options[:format] = case format
-                              when 'human', 'flamegraph'
+                              when 'csv', 'human', 'flamegraph'
                                 format.intern
                               else
                                 raise ArgumentError, "#{format} is not a supported output format. See --help for details."
@@ -442,6 +470,8 @@ module PuppetProfiler
       # file names behind.
       @log_files += args
       @outputter = case @options[:format]
+                   when :csv
+                     CsvOutput.new($stdout)
                    when :flamegraph
                      FlameGraphOutput.new($stdout)
                    else
