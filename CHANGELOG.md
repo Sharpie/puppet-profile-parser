@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - Colorization of output can be toggled via the `--color` and `--no-color`
     flags.
 
+  - The LogParser class now has a `parse_file` method.
 
 ## [0.1.0] - 2018-03-02
 

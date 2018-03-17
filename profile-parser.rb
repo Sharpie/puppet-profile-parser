@@ -252,6 +252,29 @@ module PuppetProfiler
       @log_parser = DEFAULT_PARSER
     end
 
+    def parse_file(file)
+      io = if file.is_a?(IO)
+             file
+           else
+             case File.extname(file)
+             when '.gz'
+               Zlib::GzipReader.open(file)
+             else
+               File.open(file, 'r')
+             end
+           end
+
+      begin
+        io.each_line do |line|
+          next unless line.match("PROFILE")
+
+          parse_line(line)
+        end
+      ensure
+        io.close
+      end
+    end
+
     def parse_line(log_line)
       data = @log_parser.match(log_line)
 
@@ -431,24 +454,7 @@ module PuppetProfiler
 
       parser = LogParser.new
 
-      @log_files.each do |file|
-        io = case File.extname(file)
-             when '.gz'
-               Zlib::GzipReader.open(file)
-             else
-               File.open(file, 'r')
-             end
-
-        begin
-          io.each_line do |line|
-            next unless line.match(/PROFILE/)
-
-            parser.parse_line(line)
-          end
-        ensure
-          io.close
-        end
-      end
+      @log_files.each {|f| parser.parse_file(f)}
 
       @outputter.display(parser.traces)
     end

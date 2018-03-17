@@ -32,14 +32,10 @@ describe PuppetProfiler::LogParser do
 
   describe 'when parsing a logfile' do
     subject { described_class.new }
-    let (:log) { File.open(fixture('puppetserver.log'), 'r') }
-    after(:each) { log.close }
+    let(:log_file) { fixture('puppetserver.log') }
 
     it 'creates a trace for each complete PROFILE' do
-      log.each_line do |line|
-        next unless line.match("PROFILE")
-        subject.parse_line(line)
-      end
+      subject.parse_file(log_file)
 
       expect(subject.traces.length).to eq(2)
       expect(subject.traces.first.inclusive_time).to eq(1500)
