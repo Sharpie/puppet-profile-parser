@@ -363,14 +363,32 @@ module PuppetProfiler
     def display(traces)
       traces.each do |trace|
         trace.each do |span|
+          data = convert_span(span.object)
+
           unless @header_written
-            @output << span.object.to_h.keys
+            @output << data.keys
             @header_written = true
           end
 
-          @output << span.object.to_h.values
+          @output << data.values
         end
       end
+    end
+
+    private
+
+    def convert_span(span)
+      # NOTE: The Puppet::Util::Profiler library prints seconds with 4 digits
+      # of precision, so preserve that in the output.
+      #
+      # TODO: This outputs in ISO 8601 format, which is great but may not be
+      # the best for programs like Excel. Look into this.
+      {timestamp: span.start_time.iso8601(4),
+       trace_id: span.context[:trace_id],
+       span_id: span.context[:span_id],
+       name: span.name,
+       exclusive_time_ms: span.tags[:exclusive_time],
+       inclusive_time_ms: span.tags[:exclusive_time]}
     end
   end
 
