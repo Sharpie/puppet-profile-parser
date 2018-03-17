@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+  - Colorization of output can be toggled via the `--color` and `--no-color`
+    flags.
 
 
 ## [0.1.0] - 2018-03-02

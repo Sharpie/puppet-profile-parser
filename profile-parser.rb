@@ -19,11 +19,11 @@ module PuppetProfiler
     end
 
     def self.tty?
-      @is_tty ||= (!windows? && $stdout.isatty)
+      @is_tty ||= $stdout.tty?
     end
 
-    def self.colorize(color, string)
-      if tty?
+    def self.colorize(color, string, enable = nil)
+      if (!windows?) && ((enable.nil? && tty?) || enable)
         "\033[#{COLOR_CODES[color]}m#{string}\033[0m"
       else
         string
@@ -31,8 +31,8 @@ module PuppetProfiler
     end
 
     COLOR_CODES.keys.each do |name|
-      define_singleton_method(name) do |string|
-        colorize(name, string)
+      define_singleton_method(name) do |string, enable = nil|
+        colorize(name, string, enable)
       end
     end
   end
@@ -293,16 +293,21 @@ module PuppetProfiler
   class HumanOutput
     ELLIPSIS = "\u2026".freeze
 
-    def initialize(output)
+    def initialize(output, use_color = nil)
       @output = output
+      @use_color = if use_color.nil?
+                     output.tty?
+                   else
+                     use_color
+                   end
     end
 
     def display(traces)
       traces.each do |trace|
         trace.each do |span|
           indent = " " * span.namespace.length
-          id = Tty.green(span.object.id)
-          time = Tty.yellow("(#{span.inclusive_time} ms)")
+          id = Tty.green(span.object.id, @use_color)
+          time = Tty.yellow("(#{span.inclusive_time} ms)", @use_color)
 
           @output.puts(indent + [id, span.object.inspect, time].join(' '))
         end
@@ -370,6 +375,7 @@ module PuppetProfiler
     def initialize(argv = [])
       @log_files = []
       @outputter = nil
+      @options = {color: $stdout.tty? }
 
       @optparser = OptionParser.new do |parser|
         parser.banner = "Usage: puppet-profile-parser [options] puppetserver.log [...]"
@@ -378,15 +384,19 @@ module PuppetProfiler
                   'Output format to use. One of:',
                   '    human (default)',
                   '    flamegraph') do |format|
-          case format
-          when 'human'
-            @outputter = HumanOutput.new($stdout)
-          when 'flamegraph'
-            @outputter = FlameGraphOutput.new($stdout)
-          else
-            raise ArgumentError, "#{format} is not a supported output format. See --help for details."
-          end
+          @options[:format] = case format
+                              when 'human', 'flamegraph'
+                                format.intern
+                              else
+                                raise ArgumentError, "#{format} is not a supported output format. See --help for details."
+                              end
         end
+
+        parser.on('--[no-]color', 'Colorize output.',
+                  'Defaults to true if run from an interactive POSIX shell.') do |v|
+          @options[:color] = v
+        end
+
 
         parser.on_tail('-h', '--help', 'Show help') do
           $stdout.puts(parser.help)
@@ -405,7 +415,12 @@ module PuppetProfiler
       # parse! consumes all --flags and their arguments leaving
       # file names behind.
       @log_files += args
-      @outputter ||= HumanOutput.new($stdout)
+      @outputter = case @options[:format]
+                   when :flamegraph
+                     FlameGraphOutput.new($stdout)
+                   else
+                     HumanOutput.new($stdout, @options[:color])
+                   end
     end
 
     def run
