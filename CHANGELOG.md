@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - The LogParser class now has a `parse_file` method.
 
+  - Each Trace is assigned a random UUID.
+
 ### Changed
 
   - The Namespace class has been re-named to Trace and the Slice classes

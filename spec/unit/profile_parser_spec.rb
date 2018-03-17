@@ -34,10 +34,13 @@ describe PuppetProfiler::LogParser do
     subject { described_class.new }
     let(:log_file) { fixture('puppetserver.log') }
 
-    it 'creates a trace for each complete PROFILE' do
-      subject.parse_file(log_file)
+    before(:each) { subject.parse_file(log_file) }
 
-      expect(subject.traces.length).to eq(2)
+    it 'creates a trace for each complete PROFILE with unique ids' do
+      expect(subject.traces.flat_map {|t| t.map(&:trace_id)}.uniq.length).to eq(2)
+    end
+
+    it 'computes inclusive and exclusive time for each trace' do
       expect(subject.traces.first.inclusive_time).to eq(1500)
       expect(subject.traces.first.exclusive_time).to eq(1250)
     end

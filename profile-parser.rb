@@ -2,6 +2,7 @@
 
 require 'zlib'
 require 'optparse'
+require 'securerandom'
 
 module PuppetProfiler
   VERSION = '0.1.0'.freeze
@@ -42,6 +43,7 @@ module PuppetProfiler
 
     attr_reader :namespace
     attr_reader :object
+    attr_reader :trace_id
 
     # Milliseconds spent on this operation, excluding child operations
     #
@@ -52,9 +54,10 @@ module PuppetProfiler
     # Array of operation names
     attr_reader :stack
 
-    def initialize(namespace, object)
+    def initialize(namespace, object, trace_id = nil)
       @namespace = namespace.split('.')
       @object    = object
+      @trace_id  = trace_id || SecureRandom.uuid
       @children  = {}
       @exclusive_time = nil
       @inclusive_time = nil
@@ -79,7 +82,9 @@ module PuppetProfiler
     end
 
     def get(id)
-      @children[id] ||= Trace.new([@namespace, id].flatten.join('.'), nil)
+      @children[id] ||= Trace.new([@namespace, id].flatten.join('.'),
+                                  nil,
+                                  @trace_id)
     end
 
     def each
