@@ -100,22 +100,53 @@ module PuppetProfiler
     #
     # This method should be called once all child spans have been added
     # in order to compute summary statistics for the entire trace.
-    def finalize!(parent_stack = [])
+    def finalize!(parent_stack = [], parent_object = nil)
       @stack = parent_stack + [object.name]
 
-      @children.each {|_, child| child.finalize!(@stack) }
+      @children.each {|_, child| child.finalize!(@stack, object) }
 
       @inclusive_time = Integer(object.time * 1000)
 
       child_time = @children.inject(0) {|sum, (_, child)| sum + child.inclusive_time }
       @exclusive_time = @inclusive_time - child_time
       @exclusive_time = 0 unless (@exclusive_time >= 0)
+
+      # Copy state to our wrapped span.
+      object.context[:trace_id] = @trace_id
+      object.tags[:inclusive_time] = @inclusive_time
+      object.tags[:exclusive_time] = @exclusive_time
+      object.references << ['child_of', parent_object.id] unless parent_object.nil?
+      object.finish!
     end
   end
 
   class Span
     attr_reader :id
     attr_reader :time
+    attr_reader :start_time
+    attr_reader :finish_time
+
+    attr_reader :context
+    attr_reader :tags
+    attr_reader :references
+
+    def initialize(name = nil, finish_time = nil, tags = {})
+      # Typically spans are initialized with the start time.
+      # But, we're parsing from logs writen _after_ the operation
+      # completes. So, its finish time.
+      @finish_time = finish_time
+      @name = name
+
+      @context = {trace_id: nil, span_id: nil}
+      @tags = tags
+      @references = []
+    end
+
+    def finish!
+      unless @finish_time.nil?
+        @start_time = @finish_time - @time
+      end
+    end
 
     def to_h
       {id: id,
@@ -133,6 +164,9 @@ module PuppetProfiler
       @id       = match[1]
       @function = match[2]
       @time     = match[3].to_f
+
+      @context[:span_id] = @id
+
       self
     end
 
@@ -152,6 +186,8 @@ module PuppetProfiler
       @type  = match[2]
       @title = match[3]
       @time  = match[4].to_f
+
+      @context[:span_id] = @id
 
       self
     end
@@ -177,6 +213,9 @@ module PuppetProfiler
       @id = match[1]
       @name = match[2]
       @time = match[3].to_f
+
+      @context[:span_id] = @id
+
       self
     end
 
