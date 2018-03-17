@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - The LogParser class now has a `parse_file` method.
 
+### Changed
+
+  - The Namespace class has been re-named to Trace and the Slice classes
+    have been renamed to Span. This matches the implementation up with
+    [OpenTracing terminology][opentracing-spec].
+
+  [opentracing-spec]: https://github.com/opentracing/specification/blob/master/specification.md
+
+
 ## [0.1.0] - 2018-03-02
 
 ### Added

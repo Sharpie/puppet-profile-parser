@@ -37,7 +37,7 @@ module PuppetProfiler
     end
   end
 
-  class Namespace
+  class Trace
     include Enumerable
 
     attr_reader :namespace
@@ -79,7 +79,7 @@ module PuppetProfiler
     end
 
     def get(id)
-      @children[id] ||= Namespace.new([@namespace, id].flatten.join('.'), nil)
+      @children[id] ||= Trace.new([@namespace, id].flatten.join('.'), nil)
     end
 
     def each
@@ -107,12 +107,12 @@ module PuppetProfiler
     end
   end
 
-  class Slice
+  class Span
     attr_reader :id
     attr_reader :time
   end
 
-  class FunctionSlice < Slice
+  class FunctionSpan < Span
     attr_reader :function
     alias name function
 
@@ -129,7 +129,7 @@ module PuppetProfiler
     end
   end
 
-  class ResourceSlice < Slice
+  class ResourceSpan < Span
     attr_reader :type
     attr_reader :title
 
@@ -157,7 +157,7 @@ module PuppetProfiler
     end
   end
 
-  class OtherSlice < Slice
+  class OtherSpan < Span
     attr_reader :name
 
     def parse(line)
@@ -179,20 +179,18 @@ module PuppetProfiler
     end
 
     def parse(line)
-      # Finch originally called these "slices", but we'll rename to "span"
-      # eventually in order to match OpenTracing terminology.
       span = case line
              when /Called/
-               FunctionSlice.new.parse(line)
+               FunctionSpan.new.parse(line)
              when /Evaluated resource/
-               ResourceSlice.new.parse(line)
+               ResourceSpan.new.parse(line)
              else
-               OtherSlice.new.parse(line)
+               OtherSpan.new.parse(line)
              end
 
       if span.id == '1'
         # We've hit the root of a profile, which gets logged last.
-        trace = Namespace.new('1', span)
+        trace = Trace.new('1', span)
 
         @spans.each do |child|
           trace.add(child.id, child)
@@ -342,11 +340,11 @@ module PuppetProfiler
       traces.each_with_object(spans) do |trace, span_map|
         trace.each do |span|
           case span.object
-          when FunctionSlice
+          when FunctionSpan
             span_map[:functions] << span
-          when ResourceSlice
+          when ResourceSpan
             span_map[:resources] << span
-          when OtherSlice
+          when OtherSpan
             span_map[:other] << span
           end
         end
