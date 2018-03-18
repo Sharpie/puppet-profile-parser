@@ -536,8 +536,13 @@ module PuppetProfiler
         result["parentId"] = Digest::SHA2.hexdigest(parent.last)[0..15]
       end
 
+      # Zipkin reports durations in microseconds and timestamps in microseconds
+      # since the UNIX epoch.
+      #
+      # NOTE: Time#to_i truncates to the nearest second. Using to_f is required
+      # for sub-second precision.
       unless span.start_time.nil?
-        result["timestamp"] = span.start_time.to_i * 10**6
+        result["timestamp"] = Integer(span.start_time.to_f * 10**6)
       end
       result["duration"] = Integer(span.time * 10**6)
 
