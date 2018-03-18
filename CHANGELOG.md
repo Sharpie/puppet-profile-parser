@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - CSV output format.
 
+  - JSON output for [v2 of the Zipkin API][zipkin-v2].
+
+  [zipkin-v2]: https://github.com/openzipkin/zipkin-api
+
 ### Changed
 
   - The Namespace class has been re-named to Trace and the Slice classes

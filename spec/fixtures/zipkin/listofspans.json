@@ -1,0 +1,147 @@
+{
+  "items": {
+    "required": [
+      "traceId", 
+      "id"
+    ], 
+    "type": "object", 
+    "properties": {
+      "kind": {
+        "enum": [
+          "CLIENT", 
+          "SERVER", 
+          "PRODUCER", 
+          "CONSUMER"
+        ], 
+        "type": "string", 
+        "description": "When present, clarifies timestamp, duration and remoteEndpoint. When\nabsent, the span is local or incomplete. Unlike client and server,\nthere is no direct critical path latency relationship between producer\nand consumer spans.\n\n* `CLIENT`\n  * timestamp - The moment a request was sent (formerly \"cs\")\n  * duration - When present indicates when a response was received (formerly \"cr\")\n  * remoteEndpoint - Represents the server. Leave serviceName absent if unknown.\n* `SERVER`\n  * timestamp - The moment a request was received (formerly \"sr\")\n  * duration - When present indicates when a response was sent (formerly \"ss\")\n  * remoteEndpoint - Represents the client. Leave serviceName absent if unknown.\n* `PRODUCER`\n  * timestamp - The moment a message was sent to a destination (formerly \"ms\")\n  * duration - When present represents delay sending the message, such as batching.\n  * remoteEndpoint - Represents the broker. Leave serviceName absent if unknown.\n* `CONSUMER`\n  * timestamp - The moment a message was received from an origin (formerly \"mr\")\n  * duration - When present represents delay consuming the message, such as from backlog.\n  * remoteEndpoint - Represents the broker. Leave serviceName absent if unknown.\n"
+      }, 
+      "traceId": {
+        "pattern": "[a-z0-9]{16,32}", 
+        "maxLength": 32, 
+        "type": "string", 
+        "description": "Randomly generated, unique identifier for a trace, set on all spans within it.\n\nEncoded as 16 or 32 lowercase hex characters corresponding to 64 or 128 bits.\nFor example, a 128bit trace ID looks like 4e441824ec2b6a44ffdc9bb9a6453df3\n", 
+        "minLength": 16
+      }, 
+      "name": {
+        "type": "string", 
+        "description": "The logical operation this span represents in lowercase (e.g. rpc method).\nLeave absent if unknown.\n\nAs these are lookup labels, take care to ensure names are low cardinality.\nFor example, do not embed variables into the name.\n"
+      }, 
+      "localEndpoint": {
+        "title": "Endpoint", 
+        "type": "object", 
+        "description": "The network context of a node in the service graph", 
+        "properties": {
+          "ipv6": {
+            "type": "string", 
+            "description": "The text representation of the primary IPv6 address associated with this\na connection. Ex. 2001:db8::c001 Absent if unknown.\n\nPrefer using the ipv4 field for mapped addresses.\n", 
+            "format": "ipv6"
+          }, 
+          "serviceName": {
+            "type": "string", 
+            "description": "Lower-case label of this node in the service graph, such as \"favstar\". Leave\nabsent if unknown.\n\nThis is a primary label for trace lookup and aggregation, so it should be\nintuitive and consistent. Many use a name from service discovery.\n"
+          }, 
+          "ipv4": {
+            "type": "string", 
+            "description": "The text representation of the primary IPv4 address associated with this\na connection. Ex. 192.168.99.100 Absent if unknown.\n", 
+            "format": "ipv4"
+          }, 
+          "port": {
+            "type": "integer", 
+            "description": "Depending on context, this could be a listen port or the client-side of a\nsocket. Absent if unknown\n"
+          }
+        }
+      }, 
+      "timestamp": {
+        "type": "integer", 
+        "description": "Epoch **microseconds** of the start of this span, possibly absent if incomplete.\n\nFor example, 1502787600000000 corresponds to 2017-08-15 09:00 UTC\n\nThis value should be set directly by instrumentation, using the most precise\nvalue possible. For example, gettimeofday or multiplying epoch millis by 1000.\n\nThere are three known edge-cases where this could be reported absent.\n * A span was allocated but never started (ex not yet received a timestamp)\n * The span's start event was lost\n * Data about a completed span (ex tags) were sent after the fact\n", 
+        "format": "int64"
+      }, 
+      "remoteEndpoint": {
+        "title": "Endpoint", 
+        "type": "object", 
+        "description": "The network context of a node in the service graph", 
+        "properties": {
+          "ipv6": {
+            "type": "string", 
+            "description": "The text representation of the primary IPv6 address associated with this\na connection. Ex. 2001:db8::c001 Absent if unknown.\n\nPrefer using the ipv4 field for mapped addresses.\n", 
+            "format": "ipv6"
+          }, 
+          "serviceName": {
+            "type": "string", 
+            "description": "Lower-case label of this node in the service graph, such as \"favstar\". Leave\nabsent if unknown.\n\nThis is a primary label for trace lookup and aggregation, so it should be\nintuitive and consistent. Many use a name from service discovery.\n"
+          }, 
+          "ipv4": {
+            "type": "string", 
+            "description": "The text representation of the primary IPv4 address associated with this\na connection. Ex. 192.168.99.100 Absent if unknown.\n", 
+            "format": "ipv4"
+          }, 
+          "port": {
+            "type": "integer", 
+            "description": "Depending on context, this could be a listen port or the client-side of a\nsocket. Absent if unknown\n"
+          }
+        }
+      }, 
+      "id": {
+        "pattern": "[a-z0-9]{16}", 
+        "maxLength": 16, 
+        "type": "string", 
+        "description": "Unique 64bit identifier for this operation within the trace.\n\nEncoded as 16 lowercase hex characters. For example ffdc9bb9a6453df3\n", 
+        "minLength": 16
+      }, 
+      "duration": {
+        "minimum": 1, 
+        "type": "integer", 
+        "description": "Duration in **microseconds** of the critical path, if known. Durations of less\nthan one are rounded up. Duration of children can be longer than their parents\ndue to asynchronous operations.\n\nFor example 150 milliseconds is 150000 microseconds.\n", 
+        "format": "int64"
+      }, 
+      "parentId": {
+        "pattern": "[a-z0-9]{16}", 
+        "maxLength": 16, 
+        "type": "string", 
+        "description": "The parent span ID or absent if this the root span in a trace.", 
+        "minLength": 16
+      }, 
+      "debug": {
+        "type": "boolean", 
+        "description": "True is a request to store this span even if it overrides sampling policy.\n\nThis is true when the `X-B3-Flags` header has a value of 1.\n"
+      }, 
+      "shared": {
+        "type": "boolean", 
+        "description": "True if we are contributing to a span started by another tracer (ex on a different host)."
+      }, 
+      "annotations": {
+        "uniqueItems": true, 
+        "items": {
+          "title": "Annotation", 
+          "type": "object", 
+          "description": "Associates an event that explains latency with a timestamp.\nUnlike log statements, annotations are often codes. Ex. \"ws\" for WireSend\n\nZipkin v1 core annotations such as \"cs\" and \"sr\" have been replaced with\nSpan.Kind, which interprets timestamp and duration.\n", 
+          "properties": {
+            "timestamp": {
+              "type": "integer", 
+              "description": "Epoch **microseconds** of this event.\n\nFor example, 1502787600000000 corresponds to 2017-08-15 09:00 UTC\n\nThis value should be set directly by instrumentation, using the most precise\nvalue possible. For example, gettimeofday or multiplying epoch millis by 1000.\n"
+            }, 
+            "value": {
+              "type": "string", 
+              "description": "Usually a short tag indicating an event, like \"error\"\n\nWhile possible to add larger data, such as garbage collection details, low\ncardinality event names both keep the size of spans down and also are easy\nto search against.\n"
+            }
+          }
+        }, 
+        "type": "array", 
+        "description": "Associates events that explain latency with the time they happened."
+      }, 
+      "tags": {
+        "additionalProperties": {
+          "type": "string"
+        }, 
+        "type": "object", 
+        "description": "Adds context to a span, for search, viewing and analysis.\n\nFor example, a key \"your_app.version\" would let you lookup traces by version.\nA tag \"sql.query\" isn't searchable, but it can help in debugging when viewing\na trace.\n", 
+        "title": "Tags"
+      }
+    }, 
+    "title": "Span"
+  }, 
+  "type": "array", 
+  "description": "A list of spans with possibly different trace ids, in no particular order", 
+  "title": "ListOfSpans"
+}

@@ -5,6 +5,8 @@ require 'optparse'
 require 'securerandom'
 require 'csv'
 require 'time'
+require 'json'
+require 'digest/sha2'
 
 module PuppetProfiler
   VERSION = '0.1.0'.freeze
@@ -145,12 +147,6 @@ module PuppetProfiler
       unless @finish_time.nil?
         @start_time = @finish_time - @time
       end
-    end
-
-    def to_h
-      {id: id,
-       name: self.inspect,
-       time: time}
     end
   end
 
@@ -494,6 +490,58 @@ module PuppetProfiler
     end
   end
 
+  class ZipkinOutput
+    def initialize(output)
+      @output = output
+    end
+
+    def display(traces)
+      first_loop = true
+      @output.write('[')
+
+      traces.each do |trace|
+        trace.each do |span|
+          next unless (span.inclusive_time > 0)
+
+          if first_loop
+            first_loop = false
+          else
+            @output.write(',')
+          end
+
+          @output.write(convert_span(span.object).to_json)
+        end
+      end
+
+      @output.write(']')
+    end
+
+    private
+
+    def convert_span(span)
+      # Zipkin requires 16 -- 32 hex characters for trace IDs. We can get that
+      # by removing the dashes from a UUID.
+      trace_id = span.context[:trace_id].gsub('-', '')
+      # And exactly 16 hex characters for span and parent IDs.
+      span_id = Digest::SHA2.hexdigest(span.context[:span_id])[0..15]
+
+      result = {"traceId" => trace_id,
+                "id" => span_id,
+                "name" => span.name}
+
+      if (parent = span.references.find {|r| r.first == "child_of"})
+        result["parentId"] = Digest::SHA2.hexdigest(parent.last)[0..15]
+      end
+
+      unless span.start_time.nil?
+        result["timestamp"] = span.start_time.to_i * 10**6
+      end
+      result["duration"] = Integer(span.time * 10**6)
+
+      result
+    end
+  end
+
   class CLI
     def initialize(argv = [])
       @log_files = []
@@ -507,9 +555,10 @@ module PuppetProfiler
                   'Output format to use. One of:',
                   '    human (default)',
                   '    csv',
-                  '    flamegraph') do |format|
+                  '    flamegraph',
+                  '    zipkin') do |format|
           @options[:format] = case format
-                              when 'csv', 'human', 'flamegraph'
+                              when 'csv', 'human', 'flamegraph', 'zipkin'
                                 format.intern
                               else
                                 raise ArgumentError, "#{format} is not a supported output format. See --help for details."
@@ -544,6 +593,8 @@ module PuppetProfiler
                      CsvOutput.new($stdout)
                    when :flamegraph
                      FlameGraphOutput.new($stdout)
+                   when :zipkin
+                     ZipkinOutput.new($stdout)
                    else
                      HumanOutput.new($stdout, @options[:color])
                    end
