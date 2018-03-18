@@ -114,8 +114,6 @@ module PuppetProfiler
 
       # Copy state to our wrapped span.
       object.context[:trace_id] = @trace_id
-      object.tags[:inclusive_time] = @inclusive_time
-      object.tags[:exclusive_time] = @exclusive_time
       object.references << ['child_of', parent_object.id] unless parent_object.nil?
       object.finish!
     end
@@ -365,7 +363,7 @@ module PuppetProfiler
     def display(traces)
       traces.each do |trace|
         trace.each do |span|
-          data = convert_span(span.object)
+          data = convert_span(span.object, span)
 
           unless @header_written
             @output << data.keys
@@ -379,7 +377,7 @@ module PuppetProfiler
 
     private
 
-    def convert_span(span)
+    def convert_span(span, trace)
       # NOTE: The Puppet::Util::Profiler library prints seconds with 4 digits
       # of precision, so preserve that in the output.
       #
@@ -389,8 +387,8 @@ module PuppetProfiler
        trace_id: span.context[:trace_id],
        span_id: span.context[:span_id],
        name: span.name,
-       exclusive_time_ms: span.tags[:exclusive_time],
-       inclusive_time_ms: span.tags[:exclusive_time]}
+       exclusive_time_ms: trace.exclusive_time,
+       inclusive_time_ms: trace.inclusive_time}
     end
   end
 
