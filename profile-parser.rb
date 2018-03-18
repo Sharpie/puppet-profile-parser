@@ -335,7 +335,9 @@ module PuppetProfiler
         return
       end
 
-      data = match.named_captures.map do |k, v|
+      # NOTE: The zip can be replaced with match.named_captures, which
+      # was added in Ruby 2.4.
+      data = match.names.zip(match.captures).map do |k, v|
                if k == "timestamp"
                  # Ruby only allows a subset of the ISO8601 string formats.
                  # Java defaults to printing a format that Ruby doesn't allow.
