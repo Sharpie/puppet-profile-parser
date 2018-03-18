@@ -2,7 +2,7 @@ require 'spec_helper'
 
 require "#{PROJECT_ROOT}/puppet-profile-parser.rb"
 
-describe PuppetProfiler::CLI do
+describe PuppetProfileParser::CLI do
   # Caputure output from tests.
   # TODO: Add better output control to the CLI.
   original_stdout = $stdout

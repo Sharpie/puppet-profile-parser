@@ -3,11 +3,11 @@ require 'stringio'
 
 require "#{PROJECT_ROOT}/puppet-profile-parser.rb"
 
-describe PuppetProfiler::ZipkinOutput do
+describe PuppetProfileParser::ZipkinOutput do
   subject { described_class.new(output) }
 
   let(:output) { StringIO.new }
-  let(:parser) { PuppetProfiler::LogParser.new }
+  let(:parser) { PuppetProfileParser::LogParser.new }
   let(:log_file) { fixture('puppetserver.log') }
 
   before(:each) do

@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - The `profile-parser.rb` script has been re-named to `puppet-profile-parser.rb`
     for clarity.
 
+  - The PuppetProfiler module has been re-named to PuppetProfileParser for
+    consistency with the script name.
+
   [opentracing-spec]: https://github.com/opentracing/specification/blob/master/specification.md
 
 

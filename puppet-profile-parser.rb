@@ -9,7 +9,7 @@ require 'time'
 require 'json'
 require 'digest/sha2'
 
-module PuppetProfiler
+module PuppetProfileParser
   VERSION = '0.1.0'.freeze
 
   # Utility functions for terminal interaction
@@ -628,7 +628,7 @@ end
 
 if File.expand_path(__FILE__) == File.expand_path($PROGRAM_NAME)
   begin
-    PuppetProfiler::CLI.new(ARGV).run
+    PuppetProfileParser::CLI.new(ARGV).run
   rescue => e
     $stderr.puts("ERROR #{e.class}: #{e.message}")
   end
