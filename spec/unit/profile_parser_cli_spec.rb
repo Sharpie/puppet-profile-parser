@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-require "#{PROJECT_ROOT}/profile-parser.rb"
+require "#{PROJECT_ROOT}/puppet-profile-parser.rb"
 
 describe PuppetProfiler::CLI do
   # Caputure output from tests.

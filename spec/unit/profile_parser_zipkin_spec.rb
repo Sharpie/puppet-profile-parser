@@ -1,7 +1,7 @@
 require 'spec_helper'
 require 'stringio'
 
-require "#{PROJECT_ROOT}/profile-parser.rb"
+require "#{PROJECT_ROOT}/puppet-profile-parser.rb"
 
 describe PuppetProfiler::ZipkinOutput do
   subject { described_class.new(output) }

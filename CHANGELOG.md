@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     have been renamed to Span. This matches the implementation up with
     [OpenTracing terminology][opentracing-spec].
 
+  - The `profile-parser.rb` script has been re-named to `puppet-profile-parser.rb`
+    for clarity.
+
   [opentracing-spec]: https://github.com/opentracing/specification/blob/master/specification.md
 
 
