@@ -139,7 +139,8 @@ module PuppetProfiler
       @name = name
 
       @context = {trace_id: nil, span_id: nil}
-      @tags = tags
+      @tags = tags.merge({'component' => 'puppetserver',
+                          'span.kind' => 'server'})
       @references = []
     end
 
@@ -527,7 +528,9 @@ module PuppetProfiler
 
       result = {"traceId" => trace_id,
                 "id" => span_id,
-                "name" => span.name}
+                "name" => span.name,
+                "kind" => "SERVER",
+                "localEndpoint" => {"serviceName" => "puppetserver"}}
 
       if (parent = span.references.find {|r| r.first == "child_of"})
         result["parentId"] = Digest::SHA2.hexdigest(parent.last)[0..15]
@@ -537,6 +540,8 @@ module PuppetProfiler
         result["timestamp"] = span.start_time.to_i * 10**6
       end
       result["duration"] = Integer(span.time * 10**6)
+
+      result["tags"] = span.tags unless span.tags.empty?
 
       result
     end
