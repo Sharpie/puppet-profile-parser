@@ -631,8 +631,8 @@ module PuppetProfileParser
 
     def run
       if @log_files.empty?
-        $stdout.puts(@optparser.help)
-        exit 0
+        $stderr.puts(@optparser.help)
+        exit 1
       end
 
       parser = LogParser.new

@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - The PuppetProfiler module has been re-named to PuppetProfileParser for
     consistency with the script name.
 
+  - The script prints usage to stderr and exits 1 if no log files are passed.
+
   [opentracing-spec]: https://github.com/opentracing/specification/blob/master/specification.md
 
 
