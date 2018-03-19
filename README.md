@@ -18,11 +18,11 @@ The script is tested against Ruby 2.1 and newer.
 
 The most recent stable release of the script can be downloaded from:
 
-https://github.com/Sharpie/puppet-profile-parser/releases/download/0.1.0/profile-parser.rb
+  <https://github.com/Sharpie/puppet-profile-parser/releases/download/0.1.0/profile-parser.rb>
 
 And the latest development version can be downloaded from:
 
-https://raw.githubusercontent.com/Sharpie/puppet-profile-parser/master/puppet-profile-parser.rb
+  <https://raw.githubusercontent.com/Sharpie/puppet-profile-parser/master/puppet-profile-parser.rb>
 
 
 Usage
