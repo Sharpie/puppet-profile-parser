@@ -16,13 +16,17 @@ interpreter is present on the `PATH`.
 
 The script is tested against Ruby 2.1 and newer.
 
-The most recent stable release of the script can be downloaded from:
+The most recent stable release of the script can be downloaded here:
 
-  <https://github.com/Sharpie/puppet-profile-parser/releases/download/0.2.0/puppet-profile-parser.rb>
+  [Stable release: 0.2.0][stable-release]
+
 
 And the latest development version can be downloaded from:
 
-  <https://raw.githubusercontent.com/Sharpie/puppet-profile-parser/master/puppet-profile-parser.rb>
+  [Edge release from master branch][edge-release]
+
+  [stable-release]: https://github.com/Sharpie/puppet-profile-parser/releases/download/0.2.0/puppet-profile-parser.rb
+  [edge-release]: https://raw.githubusercontent.com/Sharpie/puppet-profile-parser/master/puppet-profile-parser.rb
 
 
 Usage
@@ -52,6 +56,31 @@ profile results will be located in the Puppet Server logs.
 
 Profiling can be enabled globally by setting `profile=true` in the `[master]`
 section of `puppet.conf` and restarting the `puppetserver` service.
+
+#### Configure Puppet Server logging
+
+Depending on the version in use, there are certain adjustments you'll want to
+make to the Puppet Server logging configuration. These adjustments can be made
+in the main logback configuration file:
+
+    /etc/puppetlabs/puppetserver/logback.xml
+
+If `puppet --version` is less than `4.8.0`, the level for the `puppetserver`
+logger will need to be raised to DEBUG by adding the following configuration
+towards the bottom of the file:
+
+    <logger name="debug" level="debug"/>
+
+Or, upgrade the `puppet-agent` package to provide Puppet 4.8.0, where profiling
+data is logged at the default INFO level.
+
+Puppet Server should be configured to include the time zone in log timestamps.
+This can be done by adjusting the `pattern` of the `F1` appender:
+
+     <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5p [%t] [%c{2}] %m%n</pattern>
+
+Adding the time zone improves allows logs to be processed with accurate time
+stamps.
 
 ### Parsing profiles
 
