@@ -16,13 +16,17 @@ interpreter is present on the `PATH`.
 
 The script is tested against Ruby 2.1 and newer.
 
-The most recent stable release of the script can be downloaded from:
+The most recent stable release of the script can be downloaded here:
 
-  <https://github.com/Sharpie/puppet-profile-parser/releases/download/0.2.0/puppet-profile-parser.rb>
+  [Stable release: 0.2.0][stable-release]
+
 
 And the latest development version can be downloaded from:
 
-  <https://raw.githubusercontent.com/Sharpie/puppet-profile-parser/master/puppet-profile-parser.rb>
+  [Edge release from master branch][edge-release]
+
+  [stable-release]: https://github.com/Sharpie/puppet-profile-parser/releases/download/0.2.0/puppet-profile-parser.rb
+  [edge-release]: https://raw.githubusercontent.com/Sharpie/puppet-profile-parser/master/puppet-profile-parser.rb
 
 
 Usage
