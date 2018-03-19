@@ -163,8 +163,8 @@ inside of Docker containers:
 
   - [Jaeger][jaeger], an implementation by Uber now part of the CNCF:
 
-        docker run -d -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 -p5775:5775/udp -p6831:6831/udp -p6832:6832/udp \
-          -p5778:5778 -p16686:16686 -p14268:14268 -p9411:9411 jaegertracing/all-in-one:latest
+        docker run -d -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 \
+          -p 16686:16686 -p 9411:9411 jaegertracing/all-in-one:latest
 
     Visit <http://localhost:16686> to view profiling data in the Jaeger UI.
     Double check the date range in the "lookback" setting if no traces show up.
