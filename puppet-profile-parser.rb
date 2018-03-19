@@ -28,7 +28,7 @@ require 'json'
 require 'digest/sha2'
 
 module PuppetProfileParser
-  VERSION = '0.1.0'.freeze
+  VERSION = '0.2.0'.freeze
 
   # Utility functions for terminal interaction
   module Tty

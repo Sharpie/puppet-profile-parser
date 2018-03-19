@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## [Unreleased]
+## [0.2.0] - 2018-03-18
 
 ### Added
 
@@ -74,6 +74,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 Initial version by [Adrien Thebo](https://github.com/adrienthebo)
 
 
-[Unreleased]: https://github.com/Sharpie/puppet-profile-parser/compare/0.1.0...HEAD
+[0.2.0]: https://github.com/Sharpie/puppet-profile-parser/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/Sharpie/puppet-profile-parser/compare/0.0.1...0.1.0
 [0.0.1]: https://github.com/Sharpie/puppet-profile-parser/compare/53a9d9f...0.0.1
