@@ -166,9 +166,15 @@ inside of Docker containers:
         docker run -d -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 -p5775:5775/udp -p6831:6831/udp -p6832:6832/udp \
           -p5778:5778 -p16686:16686 -p14268:14268 -p9411:9411 jaegertracing/all-in-one:latest
 
+    Visit <http://localhost:16686> to view profiling data in the Jaeger UI.
+    Double check the date range in the "lookback" setting if no traces show up.
+
   - [Zipkin][zipkin], the original implementation by Twitter:
 
         docker run -d -p 9411:9411 openzipkin/zipkin
+
+    Visit <http://localhost:9411> to view profiling data in the Zipkin UI.
+    Double check the date range in the "lookback" setting if no traces show up.
 
 
   [zipkin-v2-spec]: https://zipkin.io/zipkin-api/
