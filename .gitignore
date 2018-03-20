@@ -1,3 +1,5 @@
 .bundle/
+.yardoc/
 Gemfile.lock
 Gemfile.local
+doc/

@@ -9,3 +9,9 @@ end
 
 desc 'Run all test suites'
 task(:test => ['spec:unit'])
+
+
+require 'yard'
+require 'yard/rake/yardoc_task'
+
+yard = YARD::Rake::YardocTask.new(:doc)
