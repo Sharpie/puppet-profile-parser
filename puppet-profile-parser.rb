@@ -27,25 +27,61 @@ require 'time'
 require 'json'
 require 'digest/sha2'
 
+# Tools for parsing and formatting Puppet Server PROFILE logs
+#
+# This module wraps components that are used to extract data from PROFILE
+# lines in Puppet Server logs and then convert the extracted data to
+# various output formats.
+#
+# A CLI is also provided to create an easy to run tool.
+#
+# @author Charlie Sharpsteen
+# @author Adrien Thebo
 module PuppetProfileParser
   VERSION = '0.2.0'.freeze
 
   # Utility functions for terminal interaction
+  #
+  # A collection of functions for  colorizing output.
   module Tty
+    # Pre-defined list of ANSI escape codes
+    #
+    # @return [Hash{Symbol => Integer}] A hash mapping human-readable color
+    #   names to ANSI escape numbers.
     COLOR_CODES = {
       red: 31,
       green: 32,
       yellow: 33,
     }.freeze
 
+    # Detect whether Ruby is running in a Windows environment
+    #
+    # @return [Boolean] Returns `true` if the alternate path separator is
+    #   defined to be a backslash.
     def self.windows?
       @is_windows ||= (::File::ALT_SEPARATOR == "\\")
     end
 
+    # Detect whether Ruby is run interactively
+    #
+    # @return [Boolean] Returns true if the standard output is a TTY.
     def self.tty?
       @is_tty ||= $stdout.tty?
     end
 
+    # Maybe wrap a string in ANSI escape codes for color
+    #
+    # @param color [Integer] The color to apply, as a number from the
+    #   ANSI color table.
+    # @param string [String] The string to which color should be applied.
+    # @param enable [Boolean] Override logic for detecting when to apply
+    #   color.
+    #
+    # @return [String] A colorized string, if `enable` is set to true or
+    #   if {.windows?} returns false, {.tty?} returns true and `enable`
+    #   is unset.
+    # @return [String] The original string unmodified if `enable` is set
+    #   to false, or {.windows?} returns true, or {.tty?} returns false.
     def self.colorize(color, string, enable = nil)
       if (!windows?) && ((enable.nil? && tty?) || enable)
         "\033[#{COLOR_CODES[color]}m#{string}\033[0m"
