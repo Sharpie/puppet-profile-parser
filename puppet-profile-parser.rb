@@ -642,7 +642,7 @@ module PuppetProfileParser
         end
 
         parser.on_tail('--version', 'Show version') do
-          puts VERSION
+          $stdout.puts(VERSION)
           exit 0
         end
       end
