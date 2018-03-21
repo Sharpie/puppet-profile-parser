@@ -685,5 +685,6 @@ if File.expand_path(__FILE__) == File.expand_path($PROGRAM_NAME)
     PuppetProfileParser::CLI.new(ARGV).run
   rescue => e
     $stderr.puts("ERROR #{e.class}: #{e.message}")
+    exit 1
   end
 end

@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+  - The script now exits with code 1 if an error is raised.
 
 
 ## [0.2.0] - 2018-03-18
