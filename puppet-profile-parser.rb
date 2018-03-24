@@ -354,74 +354,83 @@ module PuppetProfileParser
         @start_time = @finish_time - @time
       end
     end
-  end
 
-  class FunctionSpan < Span
-    attr_reader :function
-    alias name function
+    # A Span subclass representing Puppet function evaluations
+    #
+    # {include:Span}
+    class Function < Span
+      attr_reader :function
+      alias name function
 
-    def parse(line)
-      match = line.match(/([\d\.]+) Called (\S+): took ([\d\.]+) seconds/)
-      @id       = match[1]
-      @function = match[2]
-      @time     = match[3].to_f
+      def parse(line)
+        match = line.match(/([\d\.]+) Called (\S+): took ([\d\.]+) seconds/)
+        @id       = match[1]
+        @function = match[2]
+        @time     = match[3].to_f
 
-      @context[:span_id] = @id
+        @context[:span_id] = @id
 
-      self
+        self
+      end
+
+      def inspect
+        "function #{@function}"
+      end
     end
 
-    def inspect
-      "function #{@function}"
-    end
-  end
+    # A Span subclass representing Puppet resource evaluations
+    #
+    # {include:Span}
+    class Resource < Span
+      attr_reader :type
+      attr_reader :title
 
-  class ResourceSpan < Span
-    attr_reader :type
-    attr_reader :title
+      def parse(line)
+        match = line.match(/([\d\.]+) Evaluated resource ([\w:]+)\[(.*)\]: took ([\d\.]+) seconds$/)
 
-    def parse(line)
-      match = line.match(/([\d\.]+) Evaluated resource ([\w:]+)\[(.*)\]: took ([\d\.]+) seconds$/)
+        @id    = match[1]
+        @type  = match[2]
+        @title = match[3]
+        @time  = match[4].to_f
 
-      @id    = match[1]
-      @type  = match[2]
-      @title = match[3]
-      @time  = match[4].to_f
+        @context[:span_id] = @id
 
-      @context[:span_id] = @id
+        self
+      end
 
-      self
-    end
+      def name
+        @name ||= if (@type == 'Class')
+                    "#{@type}[#{@title}]"
+                  else
+                    @type
+                  end
+      end
 
-    def name
-      @name ||= if (@type == 'Class')
-                  "#{@type}[#{@title}]"
-                else
-                  @type
-                end
-    end
-
-    def inspect
-      "resource #{@type}[#{@title}]"
-    end
-  end
-
-  class OtherSpan < Span
-    attr_reader :name
-
-    def parse(line)
-      match = line.match(/PROFILE \[\d+\] ([\d\.]+) (.*): took ([\d\.]+) seconds$/)
-      @id = match[1]
-      @name = match[2]
-      @time = match[3].to_f
-
-      @context[:span_id] = @id
-
-      self
+      def inspect
+        "resource #{@type}[#{@title}]"
+      end
     end
 
-    def inspect
-      @name
+    # A Span subclass representing generic operations instrumented by the Puppet profiler
+    #
+    # {include:Span}
+    class Other < Span
+      attr_reader :name
+
+      def parse(line)
+        match = line.match(/PROFILE \[\d+\] ([\d\.]+) (.*): took ([\d\.]+) seconds$/)
+        @id = match[1]
+        @name = match[2]
+        @time = match[3].to_f
+
+        @context[:span_id] = @id
+
+        self
+      end
+
+      def inspect
+        @name
+      end
     end
   end
 
@@ -433,11 +442,11 @@ module PuppetProfileParser
     def parse(line, metadata)
       span_class = case line
                    when /Called/
-                     FunctionSpan
+                     Span::Function
                    when /Evaluated resource/
-                     ResourceSpan
+                     Span::Resource
                    else
-                     OtherSpan
+                     Span::Other
                    end
 
       span = span_class.new(nil, metadata[:timestamp]).parse(line)
@@ -644,11 +653,11 @@ module PuppetProfileParser
       traces.each_with_object(spans) do |trace, span_map|
         trace.each do |span|
           case span.object
-          when FunctionSpan
+          when Span::Function
             span_map[:functions] << span
-          when ResourceSpan
+          when Span::Resource
             span_map[:resources] << span
-          when OtherSpan
+          when Span::Other
             span_map[:other] << span
           end
         end

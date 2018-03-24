@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - The `get` method of the Trace class is now private.
 
+  - The FunctionSpan, ResourceSpan, and OtherSpan classes have been nested
+    under the Span class as Span::Function, Span::Resource, and Span::Other.
+
 
 ## [0.2.0] - 2018-03-18
 
