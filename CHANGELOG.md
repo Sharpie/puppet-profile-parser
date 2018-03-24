@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - The script now exits with code 1 if an error is raised.
 
+### Changed
+
+  - The `get` method of the Trace class is now private.
+
 
 ## [0.2.0] - 2018-03-18
 

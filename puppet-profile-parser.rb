@@ -214,7 +214,11 @@ module PuppetProfileParser
     # Compute summary statistics
     #
     # This method should be called once all child spans have been added
-    # in order to compute summary statistics for the entire trace.
+    # in order to compute summary statistics for the entire trace. The
+    # {Span#finish!} method is also called on wrapped span objects in
+    # order to finalize their state.
+    #
+    # @see Span#finish!
     #
     # @return [void]
     def finalize!
@@ -251,14 +255,82 @@ module PuppetProfileParser
     end
   end
 
+  # Profile data from a discrete operation
+  #
+  # Instances of the Span class encapsulate details of a single operation
+  # measured by the Puppet profiler. The data managed by a Span object is
+  # a subset of of items defined by the OpenTracing specification:
+  #
+  #   - {context}: Provides ID values that identify the span and the trace
+  #     it is associated with.
+  #
+  #   - {name}: A name that identifies the operation measured by the
+  #     Span instance.
+  #
+  #   - {references}: A list of references to related Span instances, such
+  #     as parent Spans.
+  #
+  #   - {tags}: A key/value map of data extracted from the Puppet Server
+  #     PROFILE log line used to generate the Span instance.
+  #
+  # If the logs used to generate the Span included timestamps, then the
+  # following standard peices of data will also be available:
+  #
+  #   - {start_time}
+  #   - {finish_time}
+  #
+  # Spans also include a non-standard {time} which is present even if the
+  # logs lacked Timestamp information.
+  #
+  # Most of these fields will be `nil` or otherwise incomplete unless the
+  # Span instance is associated with a {Trace} instance via {Trace#add}
+  # which is then finanlized via {Trace#finalize!}. The finalize method
+  # of the Trace class fills in many details of the Span class, such as
+  # the trace ID.
+  #
+  #
+  # @see Trace Trace class.
+  # @see https://github.com/opentracing/specification/blob/1.1/specification.md#the-opentracing-data-model
+  #   Definitions of "Trace" and "Span" from the OpenTracing project.
+  #
+  # @abstract
   class Span
+    # Identifier for the span. Unique within a given Trace
+    #
+    # @return [String]
     attr_reader :id
+    # Duration of operation measured by the span in seconds
+    #
+    # @return [Float]
     attr_reader :time
+    # Time at which the operation measured by the span started
+    #
+    # @return [Time]
+    # @return [nil] Until {#finish!} is called and {finish_time} is non-nil.
     attr_reader :start_time
+    # Time at which the operation measured by the span finished
+    #
+    # @return [Time, nil]
     attr_reader :finish_time
 
+    # Values identifying the span and associated {Trace}
+    #
+    # @return [Hash{:trace_id, :span_id => String}]
+    # @return [Hash{:trace_id, :span_id => nil}] Until a span is associated
+    #   with {Trace#add} and {Trace#finalize!} is called on the trace instance.
     attr_reader :context
+    # Data items parsed from PROFILE logs
+    #
+    # @see https://github.com/opentracing/specification/blob/1.1/semantic_conventions.md#standard-span-tags-and-log-fields
+    #   List of tags standardized by OpenTracing.
+    #
+    # @return [Hash{String => Object}]
     attr_reader :tags
+    # Links to related Span instances
+    #
+    # @return [Array<List(String, String)>] An array of tuples of the form
+    #   `[<relationship type>, <span id>]` that relates this Span instance
+    #   to other Span instances in the same Trace.
     attr_reader :references
 
     def initialize(name = nil, finish_time = nil, tags = {})
@@ -274,6 +346,9 @@ module PuppetProfileParser
       @references = []
     end
 
+    # Finalize Span state
+    #
+    # @return [void]
     def finish!
       unless @finish_time.nil?
         @start_time = @finish_time - @time
