@@ -97,22 +97,72 @@ module PuppetProfileParser
     end
   end
 
+  # Organize nested Span objects
+  #
+  # The Trace class implements logic for organizing related {Span} objects
+  # into a hierarchy representing a single profile operation. The Trace class
+  # wraps a {Span} instance to provide some core capabilities:
+  #
+  #   - {#add}: Add a new {Span} object to the trace at a given position in
+  #     the hierarchy.
+  #
+  #   - {#each}: Implements the functionality of the core Ruby Enumerable
+  #     module by yielding `self` followed by all child spans nested under
+  #     `self`.
+  #
+  #   - {#finalize!}: Iterates through `self` and all child spans to compute
+  #     summary statistics. Should only be called once when no further spans
+  #     will be added to the Trace.
+  #
+  # @see Span Span class.
+  # @see https://github.com/opentracing/specification/blob/1.1/specification.md#the-opentracing-data-model
+  #   Definitions of "Trace" and "Span" from the OpenTracing project.
   class Trace
     include Enumerable
 
+    # Array of strings giving the nesting depth and order of the span
+    #
+    # @return [Array[String]]
     attr_reader :namespace
+    # Wrapped Span object
+    #
+    # @return [Span]
     attr_reader :object
+    # Unique ID for this Trace and its children
+    #
+    # @return [String]
     attr_reader :trace_id
 
     # Milliseconds spent on this operation, excluding child operations
     #
     # Equal to inclusive_time minus the sum of inclusive_time for children.
+    #
+    # @return [Integer]
+    # @return [nil] If {#finalize!} has not been called.
     attr_reader :exclusive_time
     # Milliseconds spent on this operation, including child operations
+    #
+    # @return [Integer]
+    # @return [nil] If {#finalize!} has not been called.
     attr_reader :inclusive_time
     # Array of operation names
+    #
+    # @return [Array[String]]
+    # @return [nil] If {#finalize!} has not been called.
     attr_reader :stack
 
+    # Initialize a new Trace instance
+    #
+    # @param namespace [String] A single string containing a sequence of
+    #   namespace segments. Puppet uses integers separated by `.` characters
+    #   to represent nesting depth and order of profiled operations.
+    #
+    # @param object [Span] A {Span} instance representing the operation
+    #   associated with the `namespace`.
+    #
+    # @param trace_id [String] A string giving a unique id for this trace
+    #   instance and its children. Defaults to a UUIDv4 produced by
+    #   `SecureRandom.uuid`.
     def initialize(namespace, object, trace_id = nil)
       @namespace = namespace.split('.')
       @object    = object
@@ -122,8 +172,18 @@ module PuppetProfileParser
       @inclusive_time = nil
     end
 
-    def add(ns, object)
-      parts = ns.split('.')
+    # Add a new Span object as a child of the current trace
+    #
+    # @param namespace [String] A single string containing a sequence of
+    #   namespace segments. Puppet uses integers separated by `.` characters
+    #   to represent nesting depth and order of profiled operations.
+    #
+    # @param object [Span] A {Span} instance representing the operation
+    #   associated with the `namespace`.
+    #
+    # @return [void]
+    def add(namespace, object)
+      parts = namespace.split('.')
 
       child_ns = parts[0..-2]
       child_id = parts.last
@@ -132,20 +192,17 @@ module PuppetProfileParser
         # We are the object
         @object = object
       elsif @namespace == child_ns
-        get(child_id).add(ns, object)
+        get(child_id).add(namespace, object)
       else
         id = parts.drop(@namespace.size).first
         child = get(id)
-        child.add(ns, object)
+        child.add(namespace, object)
       end
     end
 
-    def get(id)
-      @children[id] ||= Trace.new([@namespace, id].flatten.join('.'),
-                                  nil,
-                                  @trace_id)
-    end
-
+    # Yield self followed by all Trace instances that are children of self
+    #
+    # @yield [Trace]
     def each
       yield self
 
@@ -158,10 +215,19 @@ module PuppetProfileParser
     #
     # This method should be called once all child spans have been added
     # in order to compute summary statistics for the entire trace.
-    def finalize!(parent_stack = [], parent_object = nil)
+    #
+    # @return [void]
+    def finalize!
+      do_finalize!
+    end
+
+    protected
+
+    # Internals of finalize that handle object state
+    def do_finalize!(parent_stack = [], parent_object = nil)
       @stack = parent_stack + [object.name]
 
-      @children.each {|_, child| child.finalize!(@stack, object) }
+      @children.each {|_, child| child.do_finalize!(@stack, object) }
 
       @inclusive_time = Integer(object.time * 1000)
 
@@ -173,6 +239,15 @@ module PuppetProfileParser
       object.context[:trace_id] = @trace_id
       object.references << ['child_of', parent_object.id] unless parent_object.nil?
       object.finish!
+    end
+
+    private
+
+    # Get or create a child Trace at the given nesting depth
+    def get(id)
+      @children[id] ||= Trace.new([@namespace, id].flatten.join('.'),
+                                  nil,
+                                  @trace_id)
     end
   end
 
