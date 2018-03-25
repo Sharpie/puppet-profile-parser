@@ -434,11 +434,32 @@ module PuppetProfileParser
     end
   end
 
+  # Parser for extracting spans from PROFILE log lines
+  #
+  # Instances of the TraceParser class process the messages of log lines
+  # that include the `PROFILE` keyword and create {Span} instances which
+  # are eventually grouped into finalized {Trace} instances.
+  #
+  # @see LogParser
+  # @see Trace
+  # @see Span
   class TraceParser
     def initialize
       @spans = []
     end
 
+    # Parse a log line possibly returning a completed trace
+    #
+    # @param line [String]
+    # @param metadata [Hash]
+    #
+    # @return [Trace] A finalized {Trace} instance is returned when a {Span}
+    #   with id `1` is parsed. All span instances parsed thus far are added
+    #   to the trace and the TraceParser re-sets by emptying its list of
+    #   parsed spans.
+    #
+    # @return [nil] A `nil` value is returned when the lines parsed thus
+    #   far have not ended in a complete trace.
     def parse(line, metadata)
       span_class = case line
                    when /Called/
@@ -474,12 +495,26 @@ module PuppetProfileParser
   end
 
   # Top-level parser for extracting profile data from logs
+  #
+  # Intances of the LogParser class consume content from log files one line
+  # at a time looking for lines that contain the keyword `PROFILE`. These
+  # lines are parsed to determine basic data such as the timestamp and
+  # thread id. Internally the LogParser maintains a hash of {TraceParser}
+  # instances keyed by thread id that parse log lines into {Trace} instances.
+  # Completed Trace instances are exposed via the {#traces} method.
+  #
+  # @see TraceParser
+  # @see Trace
   class LogParser
     # Regex for parsing ISO 8601 datestamps
     #
-    # Basically the regex used by {Time.iso8601} with some extensions.
+    # A copy of the regex used by Ruby's Time.iso8601 with extensions to
+    # allow for a space as a separator beteeen date and time segments and a
+    # comma as a separator between seconds and sub-seconds.
     #
     # @see https://ruby-doc.org/stdlib-2.4.3/libdoc/time/rdoc/Time.html#method-i-xmlschema
+    #
+    # @return [Regex]
     ISO_8601 = /(?:\d+)-(?:\d\d)-(?:\d\d)
                 [T\s]
                 (?:\d\d):(?:\d\d):(?:\d\d)
@@ -491,6 +526,8 @@ module PuppetProfileParser
     # Matches log lines that use the default logback pattern for Puppet Server:
     #
     #     %d %-5p [%t] [%c{2}] %m%n
+    #
+    # @return [Regex]
     DEFAULT_PARSER = /^\s*
                       (?<timestamp>#{ISO_8601})\s+
                       (?<log_level>[A-Z]+)\s+
@@ -498,6 +535,9 @@ module PuppetProfileParser
                       \[(?<java_class>\S+)\]\s+
                       (?<message>.*)$/x
 
+    # List of completed Trace instances
+    #
+    # @return [Array<Trace>]
     attr_reader :traces
 
     def initialize
@@ -513,6 +553,15 @@ module PuppetProfileParser
       @log_parser = DEFAULT_PARSER
     end
 
+    # Parse traces from a logfile
+    #
+    # @param file [String] Path to the logfile. Paths ending in `.gz` will
+    #   be read using a `Zlib::GzipReader`.
+    # @param file [IO] `IO` object that returns Puppet Server log lines.
+    #   The `close` method will be called on the `IO` instance as a result
+    #   of parsing.
+    #
+    # @return [void]
     def parse_file(file)
       io = if file.is_a?(IO)
              file
@@ -536,6 +585,11 @@ module PuppetProfileParser
       end
     end
 
+    # Parse a single log line
+    #
+    # @param log_line [String]
+    #
+    # @return [void]
     def parse_line(log_line)
       match = @log_parser.match(log_line)
 
