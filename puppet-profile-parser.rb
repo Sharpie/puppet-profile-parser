@@ -619,204 +619,278 @@ module PuppetProfileParser
     end
   end
 
-  class CsvOutput
+  # Base class for output formats
+  #
+  # Subclasses of Formatter render lists of {Trace} instances to particular
+  # output format and then write them to an IO instance.
+  #
+  # @see Trace
+  #
+  # @abstract
+  class Formatter
+    # Create a new formatter instance
+    #
+    # @param output [IO] An IO instance to which formatted data will be written
+    #   during a call to {#format}.
     def initialize(output)
-      @output = CSV.new(output)
-      @header_written = false
     end
 
-    def display(traces)
-      traces.each do |trace|
-        trace.each do |span|
-          data = convert_span(span.object, span)
+    # Format a list of traces and write to the wrapped output
+    #
+    # @param traces [Trace]
+    #
+    # @return [void]
+    def write(traces)
+      raise NotImplementedError, "#{self.class.name} is an abstract class."
+    end
 
-          unless @header_written
-            @output << data.keys
-            @header_written = true
+    # Format traces as CSV rows
+    #
+    # This Formatter loops over each trace and writes a row of data in CSV
+    # format for each span.
+    #
+    # @see file:README.md#label-CSV
+    #   More details in README
+    class Csv < Formatter
+      # (see Formatter#initialize)
+      def initialize(output)
+        @output = CSV.new(output)
+        @header_written = false
+      end
+
+      # (see Formatter#write)
+      def write(traces)
+        traces.each do |trace|
+          trace.each do |span|
+            data = convert_span(span.object, span)
+
+            unless @header_written
+              @output << data.keys
+              @header_written = true
+            end
+
+            @output << data.values
           end
+        end
+      end
 
-          @output << data.values
+      private
+
+      def convert_span(span, trace)
+        # NOTE: The Puppet::Util::Profiler library prints seconds with 4 digits
+        # of precision, so preserve that in the output.
+        #
+        # TODO: This outputs in ISO 8601 format, which is great but may not be
+        # the best for programs like Excel. Look into this.
+        {timestamp: span.start_time.iso8601(4),
+         trace_id: span.context[:trace_id],
+         span_id: span.context[:span_id],
+         name: span.name,
+         exclusive_time_ms: trace.exclusive_time,
+         inclusive_time_ms: trace.inclusive_time}
+      end
+    end
+
+    # Format traces as input for flamegraph.pl
+    #
+    # This Formatter loops over each trace and writes its spans out as a
+    # semicolon-delimited list of operations followed by the
+    # {Trace#exclusive_time}. This output format is suitable as input for
+    # the FlameGraph tool which generates an interactive SVG visualization.
+    #
+    # @see https://github.com/brendangregg/FlameGraph
+    #   brendangregg/FlameGraph on GitHub
+    # @see file:README.md#label-FlameGraph
+    #   More details in README
+    class FlameGraph < Formatter
+      # (see Formatter#initialize)
+      def initialize(output)
+        @output = output
+      end
+
+      # (see Formatter#write)
+      def write(traces)
+        traces.each do |trace|
+          trace.each do |span|
+            span_time = span.exclusive_time
+
+            next if span_time.zero?
+
+            # The FlameGraph script uses ; as a separator for namespace segments.
+            span_label = span.stack.map {|l| l.gsub(';', '') }.join(';')
+
+            @output.puts("#{span_label} #{span_time}")
+          end
         end
       end
     end
 
-    private
+    # Format traces as human-readable output
+    #
+    # This Formatter loops over each trace and writes its spans out as an
+    # indented list. The traces are followed by summary tables that display
+    # the most expensive operations, sorted by {Trace#exclusive_time}.
+    #
+    # @see file:README.md#label-Human+readable
+    #   More details in README
+    class Human < Formatter
+      ELLIPSIS = "\u2026".freeze
 
-    def convert_span(span, trace)
-      # NOTE: The Puppet::Util::Profiler library prints seconds with 4 digits
-      # of precision, so preserve that in the output.
+      # (see Formatter#initialize)
       #
-      # TODO: This outputs in ISO 8601 format, which is great but may not be
-      # the best for programs like Excel. Look into this.
-      {timestamp: span.start_time.iso8601(4),
-       trace_id: span.context[:trace_id],
-       span_id: span.context[:span_id],
-       name: span.name,
-       exclusive_time_ms: trace.exclusive_time,
-       inclusive_time_ms: trace.inclusive_time}
-    end
-  end
-
-  class FlameGraphOutput
-    def initialize(output)
-      @output = output
-    end
-
-    def display(traces)
-      traces.each do |trace|
-        trace.each do |span|
-          span_time = span.exclusive_time
-
-          next if span_time.zero?
-
-          # The FlameGraph script uses ; as a separator for namespace segments.
-          span_label = span.stack.map {|l| l.gsub(';', '') }.join(';')
-
-          @output.puts("#{span_label} #{span_time}")
-        end
-      end
-    end
-  end
-
-  class HumanOutput
-    ELLIPSIS = "\u2026".freeze
-
-    def initialize(output, use_color = nil)
-      @output = output
-      @use_color = if use_color.nil?
-                     output.tty?
-                   else
-                     use_color
-                   end
-    end
-
-    def display(traces)
-      traces.each do |trace|
-        trace.each do |span|
-          indent = " " * span.namespace.length
-          id = Tty.green(span.object.id, @use_color)
-          time = Tty.yellow("(#{span.inclusive_time} ms)", @use_color)
-
-          @output.puts(indent + [id, span.object.inspect, time].join(' '))
-        end
-
-        @output.write("\n\n")
+      # @param use_color [nil, Boolean] Whether or not to colorize output
+      #   using ANSI escape codes. If set to `nil`, the default value
+      #   of {Tty.tty?} will be used.
+      def initialize(output, use_color = nil)
+        @output = output
+        @use_color = if use_color.nil?
+                       output.tty?
+                     else
+                       use_color
+                     end
       end
 
-      spans = Hash.new {|h,k| h[k] = [] }
-      traces.each_with_object(spans) do |trace, span_map|
-        trace.each do |span|
-          case span.object
-          when Span::Function
-            span_map[:functions] << span
-          when Span::Resource
-            span_map[:resources] << span
-          when Span::Other
-            span_map[:other] << span
-          end
-        end
-      end
+      # (see Formatter#write)
+      def write(traces)
+        traces.each do |trace|
+          trace.each do |span|
+            indent = " " * span.namespace.length
+            id = Tty.green(span.object.id, @use_color)
+            time = Tty.yellow("(#{span.inclusive_time} ms)", @use_color)
 
-      process_group("Function calls", spans[:functions])
-      process_group("Resource evaluations", spans[:resources])
-      process_group("Other evaluations", spans[:other])
-    end
-
-    private
-
-    def truncate(str, width)
-      if (str.length <= width)
-        str
-      else
-        str[0..(width-2)] + ELLIPSIS
-      end
-    end
-
-    def process_group(title, spans)
-      total = 0
-      itemized_totals = Hash.new { |h, k| h[k] = 0 }
-
-      spans.each do |span|
-        total += span.exclusive_time
-        itemized_totals[span.stack.last] += span.exclusive_time
-      end
-
-      rows = itemized_totals.to_a.sort { |a, b| b[1] <=> a[1] }
-
-      @output.puts "\n--- #{title} ---"
-      @output.puts "Total time: #{total} ms"
-      @output.puts "Itemized:"
-
-      # NOTE: Table formatting fixed to 72 columns. Adjusting this based on
-      # screen size is possible, but not worth the complexity at this time.
-      @output.printf("%-50s | %-19s\n", 'Source', 'Time')
-      @output.puts(('-' * 50) + '-+-' + ('-' * 19))
-      rows.each do |k, v|
-        next if v.zero?
-
-        @output.printf("%-50s | %i ms\n", truncate(k, 50), v)
-      end
-    end
-  end
-
-  class ZipkinOutput
-    def initialize(output)
-      @output = output
-    end
-
-    def display(traces)
-      first_loop = true
-      @output.write('[')
-
-      traces.each do |trace|
-        trace.each do |span|
-          next unless (span.inclusive_time > 0)
-
-          if first_loop
-            first_loop = false
-          else
-            @output.write(',')
+            @output.puts(indent + [id, span.object.inspect, time].join(' '))
           end
 
-          @output.write(convert_span(span.object).to_json)
+          @output.write("\n\n")
+        end
+
+        spans = Hash.new {|h,k| h[k] = [] }
+        traces.each_with_object(spans) do |trace, span_map|
+          trace.each do |span|
+            case span.object
+            when Span::Function
+              span_map[:functions] << span
+            when Span::Resource
+              span_map[:resources] << span
+            when Span::Other
+              span_map[:other] << span
+            end
+          end
+        end
+
+        process_group("Function calls", spans[:functions])
+        process_group("Resource evaluations", spans[:resources])
+        process_group("Other evaluations", spans[:other])
+      end
+
+      private
+
+      def truncate(str, width)
+        if (str.length <= width)
+          str
+        else
+          str[0..(width-2)] + ELLIPSIS
         end
       end
 
-      @output.write(']')
+      def process_group(title, spans)
+        total = 0
+        itemized_totals = Hash.new { |h, k| h[k] = 0 }
+
+        spans.each do |span|
+          total += span.exclusive_time
+          itemized_totals[span.stack.last] += span.exclusive_time
+        end
+
+        rows = itemized_totals.to_a.sort { |a, b| b[1] <=> a[1] }
+
+        @output.puts "\n--- #{title} ---"
+        @output.puts "Total time: #{total} ms"
+        @output.puts "Itemized:"
+
+        # NOTE: Table formatting fixed to 72 columns. Adjusting this based on
+        # screen size is possible, but not worth the complexity at this time.
+        @output.printf("%-50s | %-19s\n", 'Source', 'Time')
+        @output.puts(('-' * 50) + '-+-' + ('-' * 19))
+        rows.each do |k, v|
+          next if v.zero?
+
+          @output.printf("%-50s | %i ms\n", truncate(k, 50), v)
+        end
+      end
     end
 
-    private
-
-    def convert_span(span)
-      # Zipkin requires 16 -- 32 hex characters for trace IDs. We can get that
-      # by removing the dashes from a UUID.
-      trace_id = span.context[:trace_id].gsub('-', '')
-      # And exactly 16 hex characters for span and parent IDs.
-      span_id = Digest::SHA2.hexdigest(span.context[:span_id])[0..15]
-
-      result = {"traceId" => trace_id,
-                "id" => span_id,
-                "name" => span.name,
-                "kind" => "SERVER",
-                "localEndpoint" => {"serviceName" => "puppetserver"}}
-
-      if (parent = span.references.find {|r| r.first == "child_of"})
-        result["parentId"] = Digest::SHA2.hexdigest(parent.last)[0..15]
+    # Format traces as Zipkin JSON
+    #
+    # This Formatter loops over each trace and writes its spans out as JSON
+    # data formatted according to the `ListOfSpans` datatype accepted by the
+    # Zipkin v2 API.
+    #
+    # @see https://zipkin.io/zipkin-api/
+    #   Zipkin v2 API specification
+    # @see file:README.md#label-Zipkin+JSON
+    #   More details in README
+    class Zipkin < Formatter
+      # (see Formatter#initialize)
+      def initialize(output)
+        @output = output
       end
 
-      # Zipkin reports durations in microseconds and timestamps in microseconds
-      # since the UNIX epoch.
-      #
-      # NOTE: Time#to_i truncates to the nearest second. Using to_f is required
-      # for sub-second precision.
-      unless span.start_time.nil?
-        result["timestamp"] = Integer(span.start_time.to_f * 10**6)
+      # (see Formatter#write)
+      def write(traces)
+        first_loop = true
+        @output.write('[')
+
+        traces.each do |trace|
+          trace.each do |span|
+            next unless (span.inclusive_time > 0)
+
+            if first_loop
+              first_loop = false
+            else
+              @output.write(',')
+            end
+
+            @output.write(convert_span(span.object).to_json)
+          end
+        end
+
+        @output.write(']')
       end
-      result["duration"] = Integer(span.time * 10**6)
 
-      result["tags"] = span.tags unless span.tags.empty?
+      private
 
-      result
+      def convert_span(span)
+        # Zipkin requires 16 -- 32 hex characters for trace IDs. We can get that
+        # by removing the dashes from a UUID.
+        trace_id = span.context[:trace_id].gsub('-', '')
+        # And exactly 16 hex characters for span and parent IDs.
+        span_id = Digest::SHA2.hexdigest(span.context[:span_id])[0..15]
+
+        result = {"traceId" => trace_id,
+                  "id" => span_id,
+                  "name" => span.name,
+                  "kind" => "SERVER",
+                  "localEndpoint" => {"serviceName" => "puppetserver"}}
+
+        if (parent = span.references.find {|r| r.first == "child_of"})
+          result["parentId"] = Digest::SHA2.hexdigest(parent.last)[0..15]
+        end
+
+        # Zipkin reports durations in microseconds and timestamps in microseconds
+        # since the UNIX epoch.
+        #
+        # NOTE: Time#to_i truncates to the nearest second. Using to_f is required
+        # for sub-second precision.
+        unless span.start_time.nil?
+          result["timestamp"] = Integer(span.start_time.to_f * 10**6)
+        end
+        result["duration"] = Integer(span.time * 10**6)
+
+        result["tags"] = span.tags unless span.tags.empty?
+
+        result
+      end
     end
   end
 
@@ -866,15 +940,15 @@ module PuppetProfileParser
       # parse! consumes all --flags and their arguments leaving
       # file names behind.
       @log_files += args
-      @outputter = case @options[:format]
+      @formatter = case @options[:format]
                    when :csv
-                     CsvOutput.new($stdout)
+                     Formatter::Csv.new($stdout)
                    when :flamegraph
-                     FlameGraphOutput.new($stdout)
+                     Formatter::FlameGraph.new($stdout)
                    when :zipkin
-                     ZipkinOutput.new($stdout)
+                     Formatter::Zipkin.new($stdout)
                    else
-                     HumanOutput.new($stdout, @options[:color])
+                     Formatter::Human.new($stdout, @options[:color])
                    end
     end
 
@@ -888,7 +962,7 @@ module PuppetProfileParser
 
       @log_files.each {|f| parser.parse_file(f)}
 
-      @outputter.display(parser.traces)
+      @formatter.write(parser.traces)
     end
   end
 end

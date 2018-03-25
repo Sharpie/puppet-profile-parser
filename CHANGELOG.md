@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - The FunctionSpan, ResourceSpan, and OtherSpan classes have been nested
     under the Span class as Span::Function, Span::Resource, and Span::Other.
 
+  - The CsvOutput, FlameGraphOutput, HumanOutput, and ZipkinOutput classes have
+    been nested under a new Formatter class as Formatter::Csv, Formatter:FlameGraph,
+    Formatter::Human and Formatter::Zipkin. The `display` method has also been
+    re-named to `write`.
+
 
 ## [0.2.0] - 2018-03-18
 

@@ -3,7 +3,7 @@ require 'stringio'
 
 require "#{PROJECT_ROOT}/puppet-profile-parser.rb"
 
-describe PuppetProfileParser::ZipkinOutput do
+describe PuppetProfileParser::Formatter::Zipkin do
   subject { described_class.new(output) }
 
   let(:output) { StringIO.new }
@@ -12,7 +12,7 @@ describe PuppetProfileParser::ZipkinOutput do
 
   before(:each) do
     parser.parse_file(log_file)
-    subject.display(parser.traces)
+    subject.write(parser.traces)
   end
 
   it 'creates valid JSON' do
