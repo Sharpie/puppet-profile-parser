@@ -506,6 +506,9 @@ module PuppetProfileParser
   # @see TraceParser
   # @see Trace
   class LogParser
+    # String which identifies log lines containing profiling data
+    PROFILE_TAG = 'PROFILE'.freeze
+
     # Regex for parsing ISO 8601 datestamps
     #
     # A copy of the regex used by Ruby's Time.iso8601 with extensions to
@@ -577,7 +580,7 @@ module PuppetProfileParser
 
       begin
         io.each_line do |line|
-          next unless line.match("PROFILE")
+          next unless line.match(PROFILE_TAG)
 
           parse_line(line)
         end
