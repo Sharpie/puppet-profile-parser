@@ -418,7 +418,7 @@ module PuppetProfileParser
       attr_reader :name
 
       def parse(line)
-        match = line.match(/PROFILE \[\d+\] ([\d\.]+) (.*): took ([\d\.]+) seconds$/)
+        match = line.match(/([\d\.]+) (.*): took ([\d\.]+) seconds$/)
         @id = match[1]
         @name = match[2]
         @time = match[3].to_f
@@ -527,12 +527,17 @@ module PuppetProfileParser
     #
     #     %d %-5p [%t] [%c{2}] %m%n
     #
+    # The parser also consumes a leading "Puppet PROFILE [XXXX]" or
+    # "PROFILE [XXXX]" string where "XXXX" is an id assigned to each
+    # profiling operation. HTTP requests are assigned a unique per-request id.
+    #
     # @return [Regex]
     DEFAULT_PARSER = /^\s*
                       (?<timestamp>#{ISO_8601})\s+
                       (?<log_level>[A-Z]+)\s+
                       \[(?<thread_id>\S+)\]\s+
                       \[(?<java_class>\S+)\]\s+
+                      (?:Puppet\s+)?PROFILE\s+\[(?<request_id>.+)\]\s+
                       (?<message>.*)$/x
 
     # List of completed Trace instances
@@ -546,10 +551,6 @@ module PuppetProfileParser
 
       # TODO: Could be configurable. Would be a lot of work to implement
       # a reasonable intersection of Java and Passenger formats.
-      #
-      # The "PROFILE [<trace_id>] ..." messages also include an id which
-      # is set to the Ruby object id created to handle each HTTP request.
-      # Could switch to using that instead of the Java thread id.
       @log_parser = DEFAULT_PARSER
     end
 

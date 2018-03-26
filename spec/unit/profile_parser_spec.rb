@@ -22,7 +22,8 @@ describe PuppetProfileParser::LogParser do
       expect(result[:log_level]).to eq('INFO')
       expect(result[:thread_id]).to eq('qtp1732817189-1224')
       expect(result[:java_class]).to eq('puppetserver')
-      expect(result[:message]).to eq('Puppet PROFILE [39776666] 1 Processed request GET /puppet/v3/node/pe-201734-master.puppetdebug.vlan: took 0.1640 seconds')
+      expect(result[:request_id]).to eq('39776666')
+      expect(result[:message]).to eq('1 Processed request GET /puppet/v3/node/pe-201734-master.puppetdebug.vlan: took 0.1640 seconds')
     end
   end
 
