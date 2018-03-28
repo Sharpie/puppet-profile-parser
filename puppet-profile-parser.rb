@@ -657,7 +657,7 @@ module PuppetProfileParser
     # Create a new formatter instance
     #
     # @param output [IO] An IO instance to which formatted data will be written
-    #   during a call to {#format}.
+    #   during a call to {#write}.
     def initialize(output)
     end
 
