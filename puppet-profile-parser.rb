@@ -470,7 +470,7 @@ module PuppetProfileParser
                      Span::Other
                    end
 
-      span = span_class.new(nil, metadata[:timestamp]).parse(line)
+      span = span_class.new(nil, metadata['timestamp']).parse(line)
 
       if span.id == '1'
         # We've hit the root of a profile, which gets logged last.
@@ -548,6 +548,31 @@ module PuppetProfileParser
     # @return [Array<Trace>]
     attr_reader :traces
 
+    # Convert Regex MatchData to a hash of captures
+    #
+    # This function converts MatchData from a Regex to a hash of named
+    # captures and yeilds each pair to an option block for transformation.
+    # The function assumes that every capture in the Regex is named.
+    #
+    # @yieldparam k [String] Name of the regex capture group.
+    # @yieldparam v [String] Value of the regex capture group.
+    # @yieldreturn [nil, Object] An object representing the match data
+    #   transformed to some value. A return value of `nil` will cause the
+    #   original value to be used unmodified.
+    #
+    # @return [Hash{String => Object}] a hash mapping the capture names to
+    #   transformed values.
+    def self.convert_match(match_data)
+      # NOTE: The zip can be replaced with match.named_captures, which
+      # was added in Ruby 2.4.
+      match_data.names.zip(match_data.captures).map do |k, v|
+        new_v = yield(k, v) if block_given?
+        v = new_v.nil? ? v : new_v
+
+        [k, v]
+      end.to_h
+    end
+
     def initialize
       @traces = []
       @trace_parsers = Hash.new {|h,k| h[k] = TraceParser.new }
@@ -602,20 +627,17 @@ module PuppetProfileParser
         return
       end
 
-      # NOTE: The zip can be replaced with match.named_captures, which
-      # was added in Ruby 2.4.
-      data = match.names.zip(match.captures).map do |k, v|
-               if k == "timestamp"
-                 # Ruby only allows a subset of the ISO8601 string formats.
-                 # Java defaults to printing a format that Ruby doesn't allow.
-                 v = Time.iso8601(v.sub(' ', 'T').sub(',','.'))
-               end
+      data = LogParser.convert_match(match) do |k, v|
+        if k == "timestamp"
+          # Ruby only allows the ISO 8601 profile defined by RFC 3339.
+          # The Java %d format prints something that Ruby won't accept.
+          Time.iso8601(v.sub(' ', 'T').sub(',','.'))
+        end
+      end
+      message = data.delete('message')
 
-               [k.to_sym, v]
-             end.to_h
-
-      trace_parser = @trace_parsers[data[:thread_id]]
-      result = trace_parser.parse(data[:message], data)
+      trace_parser = @trace_parsers[data['thread_id']]
+      result = trace_parser.parse(message, data)
 
       # The TraceParser returns nil unless the log lines parsed so far
       # add up to a complete profile.
