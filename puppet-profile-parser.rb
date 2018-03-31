@@ -891,7 +891,10 @@ module PuppetProfileParser
         end
         result["duration"] = Integer(span.time * 10**6)
 
-        result["tags"] = span.tags unless span.tags.empty?
+        unless span.tags.empty?
+          result["tags"] = span.tags.dup
+          result["tags"].delete("span.kind") # Set to SERVER above.
+        end
 
         result
       end

@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - The script now exits with code 1 if an error is raised.
   - The script now allows for a PROFILE message containing `]` characters. 
 
+  - Zipkin output no longer contains a redundant `span.kind` tag.
+
 ### Changed
 
   - The `get` method of the Trace class is now private.
