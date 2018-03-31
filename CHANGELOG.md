@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - PuppetDB operations are now parsed explicitly instead of being part
     of the "other" span group.
 
+  - HTTP requests are parsed explicitly and tagged with method, url and
+    peer.certname (if available).
+
 ### Fixed
 
   - The script now exits with code 1 if an error is raised.

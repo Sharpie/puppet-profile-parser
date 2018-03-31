@@ -389,6 +389,12 @@ module PuppetProfileParser
     # helper that added "PuppetDB: " to the beginning of the message.
     PUPPETDB_QUERY = /(?<name>Submitted query .*)/
 
+    HOSTNAME = /\b(?:[0-9A-Za-z][0-9A-Za-z-]{0,62})(?:\.(?:[0-9A-Za-z][0-9A-Za-z-]{0,62}))*(\.?|\b)/
+    CERTNAME_REQUEST = /Processed\srequest\s
+                        (?<http.method>[A-Z]+)\s
+                        (?<name>.*\/)(?<peer.hostname>#{HOSTNAME})?\Z/x
+    HTTP_REQUEST = /Processed request (?<http.method>[A-Z]+) (?<name>.*\/)/
+
     def initialize
       @spans = []
     end
@@ -423,6 +429,21 @@ module PuppetProfileParser
                   when PUPPETDB_OP, PUPPETDB_QUERY
                     LogParser.convert_match(Regexp.last_match).merge({
                       'puppet.op_type' => 'puppetdb_call'})
+                  when CERTNAME_REQUEST, HTTP_REQUEST
+                    data = LogParser.convert_match(Regexp.last_match).merge({
+                             'puppet.op_type' => 'http_request'})
+
+                    # TODO: Would be nice if there was a reliable way of
+                    # getting the server's hostname so we could use it
+                    # instead of a RFC 2606 example domain.
+                    data['http.url'] = 'https://puppetserver.example:8140' +
+                      data['name']
+
+                    unless data['peer.hostname'].nil?
+                      data['http.url'] += ('/' + data['peer.hostname'])
+                    end
+
+                    data
                   else
                     {'name' => common_data['message'],
                      'puppet.op_type' => 'other'}
@@ -767,6 +788,8 @@ module PuppetProfileParser
               span_map[:resources] << span
             when 'puppetdb_call'
               span_map[:puppetdb] << span
+            when 'http_request'
+              span_map[:http_req] << span
             else
               span_map[:other] << span
             end
@@ -776,6 +799,7 @@ module PuppetProfileParser
         process_group("Function calls", spans[:functions])
         process_group("Resource evaluations", spans[:resources])
         process_group("PuppetDB operations", spans[:puppetdb])
+        process_group("HTTP Requests", spans[:http_req])
         process_group("Other evaluations", spans[:other])
       end
 
