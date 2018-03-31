@@ -384,6 +384,10 @@ module PuppetProfileParser
 
     FUNCTION_CALL = /Called (?<name>\S+)/
     RESOURCE_EVAL = /Evaluated resource (?<name>(?<puppet.resource_type>[\w:]+)\[(?<puppet.resource_title>.*)\])/
+    PUPPETDB_OP   = /PuppetDB: (?<name>[^\(]*)(?:\s\([\w\s]*: \d+\))?\Z/
+    # For most versions of PuppetDB, the query function forgot to use a
+    # helper that added "PuppetDB: " to the beginning of the message.
+    PUPPETDB_QUERY = /(?<name>Submitted query .*)/
 
     def initialize
       @spans = []
@@ -416,6 +420,9 @@ module PuppetProfileParser
                   when RESOURCE_EVAL
                     LogParser.convert_match(Regexp.last_match).merge({
                       'puppet.op_type' => 'resource_eval'})
+                  when PUPPETDB_OP, PUPPETDB_QUERY
+                    LogParser.convert_match(Regexp.last_match).merge({
+                      'puppet.op_type' => 'puppetdb_call'})
                   else
                     {'name' => common_data['message'],
                      'puppet.op_type' => 'other'}
@@ -758,6 +765,8 @@ module PuppetProfileParser
               span_map[:functions] << span
             when 'resource_eval'
               span_map[:resources] << span
+            when 'puppetdb_call'
+              span_map[:puppetdb] << span
             else
               span_map[:other] << span
             end
@@ -766,6 +775,7 @@ module PuppetProfileParser
 
         process_group("Function calls", spans[:functions])
         process_group("Resource evaluations", spans[:resources])
+        process_group("PuppetDB operations", spans[:puppetdb])
         process_group("Other evaluations", spans[:other])
       end
 

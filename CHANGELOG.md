@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - A `--debug` flag which enables error backtraces.
 
+  - PuppetDB operations are now parsed explicitly instead of being part
+    of the "other" span group.
+
 ### Fixed
 
   - The script now exits with code 1 if an error is raised.
