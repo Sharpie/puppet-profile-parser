@@ -954,6 +954,10 @@ module PuppetProfileParser
           exit 0
         end
 
+        parser.on_tail('--debug', 'Enable backtraces from errors.') do
+          @options[:debug] = true
+        end
+
         parser.on_tail('--version', 'Show version') do
           $stdout.puts(VERSION)
           exit 0
@@ -989,15 +993,21 @@ module PuppetProfileParser
       @log_files.each {|f| parser.parse_file(f)}
 
       @formatter.write(parser.traces)
+    rescue => e
+      message = if @options[:debug]
+                  ["ERROR #{e.class}: #{e.message}",
+                   e.backtrace].join("\n\t")
+                else
+                  "ERROR #{e.class}: #{e.message}"
+                end
+
+      $stderr.puts(message)
+      exit 1
     end
   end
 end
 
+
 if File.expand_path(__FILE__) == File.expand_path($PROGRAM_NAME)
-  begin
-    PuppetProfileParser::CLI.new(ARGV).run
-  rescue => e
-    $stderr.puts("ERROR #{e.class}: #{e.message}")
-    exit 1
-  end
+  PuppetProfileParser::CLI.new(ARGV).run
 end

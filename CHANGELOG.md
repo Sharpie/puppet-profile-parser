@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+  - A `--debug` flag which enables error backtraces.
+
 ### Fixed
 
   - The script now exits with code 1 if an error is raised.
