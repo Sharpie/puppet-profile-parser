@@ -292,17 +292,16 @@ module PuppetProfileParser
   # @see Trace Trace class.
   # @see https://github.com/opentracing/specification/blob/1.1/specification.md#the-opentracing-data-model
   #   Definitions of "Trace" and "Span" from the OpenTracing project.
-  #
-  # @abstract
   class Span
-    # Identifier for the span. Unique within a given Trace
+    # Operation name
     #
     # @return [String]
-    attr_reader :id
+    attr_reader :name
+
     # Duration of operation measured by the span in seconds
     #
     # @return [Float]
-    attr_reader :time
+    attr_accessor :time
     # Time at which the operation measured by the span started
     #
     # @return [Time]
@@ -346,90 +345,24 @@ module PuppetProfileParser
       @references = []
     end
 
+    # Identifier for the span. Unique within a given Trace
+    #
+    # @!attribute [r] id
+    #   @return [String]
+    def id
+      @context[:span_id]
+    end
+
+    def inspect
+      @name
+    end
+
     # Finalize Span state
     #
     # @return [void]
     def finish!
       unless @finish_time.nil?
         @start_time = @finish_time - @time
-      end
-    end
-
-    # A Span subclass representing Puppet function evaluations
-    #
-    # {include:Span}
-    class Function < Span
-      attr_reader :function
-      alias name function
-
-      def parse(line)
-        match = line.match(/([\d\.]+) Called (\S+): took ([\d\.]+) seconds/)
-        @id       = match[1]
-        @function = match[2]
-        @time     = match[3].to_f
-
-        @context[:span_id] = @id
-
-        self
-      end
-
-      def inspect
-        "function #{@function}"
-      end
-    end
-
-    # A Span subclass representing Puppet resource evaluations
-    #
-    # {include:Span}
-    class Resource < Span
-      attr_reader :type
-      attr_reader :title
-
-      def parse(line)
-        match = line.match(/([\d\.]+) Evaluated resource ([\w:]+)\[(.*)\]: took ([\d\.]+) seconds$/)
-
-        @id    = match[1]
-        @type  = match[2]
-        @title = match[3]
-        @time  = match[4].to_f
-
-        @context[:span_id] = @id
-
-        self
-      end
-
-      def name
-        @name ||= if (@type == 'Class')
-                    "#{@type}[#{@title}]"
-                  else
-                    @type
-                  end
-      end
-
-      def inspect
-        "resource #{@type}[#{@title}]"
-      end
-    end
-
-    # A Span subclass representing generic operations instrumented by the Puppet profiler
-    #
-    # {include:Span}
-    class Other < Span
-      attr_reader :name
-
-      def parse(line)
-        match = line.match(/([\d\.]+) (.*): took ([\d\.]+) seconds$/)
-        @id = match[1]
-        @name = match[2]
-        @time = match[3].to_f
-
-        @context[:span_id] = @id
-
-        self
-      end
-
-      def inspect
-        @name
       end
     end
   end
@@ -444,6 +377,14 @@ module PuppetProfileParser
   # @see Trace
   # @see Span
   class TraceParser
+    # Regex for extracting span id and duration
+    COMMON_DATA = /(?<span_id>[\d\.]+)\s+
+                   (?<message>.*)
+                   :\stook\s(?<duration>[\d\.]+)\sseconds$/x
+
+    FUNCTION_CALL = /Called (?<name>\S+)/
+    RESOURCE_EVAL = /Evaluated resource (?<name>(?<puppet.resource_type>[\w:]+)\[(?<puppet.resource_title>.*)\])/
+
     def initialize
       @spans = []
     end
@@ -461,16 +402,28 @@ module PuppetProfileParser
     # @return [nil] A `nil` value is returned when the lines parsed thus
     #   far have not ended in a complete trace.
     def parse(line, metadata)
-      span_class = case line
-                   when /Called/
-                     Span::Function
-                   when /Evaluated resource/
-                     Span::Resource
-                   else
-                     Span::Other
-                   end
+      match = COMMON_DATA.match(line)
+      if match.nil?
+        $stderr.puts("WARN Could not parse PROFILE message: #{line})")
+        return nil
+      end
+      common_data = LogParser.convert_match(match) {|k, v| v.to_f if k == 'duration' }
 
-      span = span_class.new(nil, metadata['timestamp']).parse(line)
+      span_data = case common_data['message']
+                  when FUNCTION_CALL
+                    LogParser.convert_match(Regexp.last_match).merge({
+                      'puppet.op_type' => 'function_call'})
+                  when RESOURCE_EVAL
+                    LogParser.convert_match(Regexp.last_match).merge({
+                      'puppet.op_type' => 'resource_eval'})
+                  else
+                    {'name' => common_data['message'],
+                     'puppet.op_type' => 'other'}
+                  end
+
+      span = Span.new(span_data.delete('name'),metadata['timestamp'], span_data)
+      span.context[:span_id] = common_data['span_id']
+      span.time = common_data['duration']
 
       if span.id == '1'
         # We've hit the root of a profile, which gets logged last.
@@ -742,6 +695,13 @@ module PuppetProfileParser
 
             next if span_time.zero?
 
+            case span.object.tags['puppet.resource_type']
+            when nil, 'Class'
+            else
+              # Aggregate resources that aren't classes.
+              span.stack[-1] = span.object.tags['puppet.resource_type']
+            end
+
             # The FlameGraph script uses ; as a separator for namespace segments.
             span_label = span.stack.map {|l| l.gsub(';', '') }.join(';')
 
@@ -793,12 +753,12 @@ module PuppetProfileParser
         spans = Hash.new {|h,k| h[k] = [] }
         traces.each_with_object(spans) do |trace, span_map|
           trace.each do |span|
-            case span.object
-            when Span::Function
+            case span.object.tags['puppet.op_type']
+            when 'function_call'
               span_map[:functions] << span
-            when Span::Resource
+            when 'resource_eval'
               span_map[:resources] << span
-            when Span::Other
+            else
               span_map[:other] << span
             end
           end
@@ -825,7 +785,15 @@ module PuppetProfileParser
 
         spans.each do |span|
           total += span.exclusive_time
-          itemized_totals[span.stack.last] += span.exclusive_time
+          span_key = case span.object.tags['puppet.resource_type']
+                     when nil, 'Class'
+                       span.object.name
+                     else
+                       # Aggregate resources that aren't classes.
+                       span.object.tags['puppet.resource_type']
+                     end
+
+          itemized_totals[span_key] += span.exclusive_time
         end
 
         rows = itemized_totals.to_a.sort { |a, b| b[1] <=> a[1] }

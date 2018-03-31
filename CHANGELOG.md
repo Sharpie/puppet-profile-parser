@@ -20,8 +20,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - The `get` method of the Trace class is now private.
 
-  - The FunctionSpan, ResourceSpan, and OtherSpan classes have been nested
-    under the Span class as Span::Function, Span::Resource, and Span::Other.
+  - The FunctionSpan, ResourceSpan, and OtherSpan classes have been replaced
+    by the generic Span class and all parsing logic has been moved to the
+    TraceParser class.
 
   - The CsvOutput, FlameGraphOutput, HumanOutput, and ZipkinOutput classes have
     been nested under a new Formatter class as Formatter::Csv, Formatter:FlameGraph,
