@@ -540,7 +540,7 @@ module PuppetProfileParser
                       (?<log_level>[A-Z]+)\s+
                       \[(?<thread_id>\S+)\]\s+
                       \[(?<java_class>\S+)\]\s+
-                      (?:Puppet\s+)?PROFILE\s+\[(?<request_id>.+)\]\s+
+                      (?:Puppet\s+)?PROFILE\s+\[(?<request_id>[^\]]+)\]\s+
                       (?<message>.*)$/x
 
     # List of completed Trace instances

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
   - The script now exits with code 1 if an error is raised.
+  - The script now allows for a PROFILE message containing `]` characters. 
 
 ### Changed
 
