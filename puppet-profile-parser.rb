@@ -26,6 +26,7 @@ require 'csv'
 require 'time'
 require 'json'
 require 'digest/sha2'
+require 'rubygems/version'
 
 # Tools for parsing and formatting Puppet Server PROFILE logs
 #
@@ -39,6 +40,7 @@ require 'digest/sha2'
 # @author Adrien Thebo
 module PuppetProfileParser
   VERSION = '0.2.0'.freeze
+  REQUIRED_RUBY_VERSION = Gem::Requirement.new('>= 2.0')
 
   # Utility functions for terminal interaction
   #
@@ -990,7 +992,10 @@ module PuppetProfileParser
     end
 
     def run
-      if @log_files.empty?
+      if not REQUIRED_RUBY_VERSION.satisfied_by?(Gem::Version.new(RUBY_VERSION))
+        $stderr.puts("puppet-profile-parser requires Ruby #{REQUIRED_RUBY_VERSION}")
+        exit 1
+      elsif @log_files.empty?
         $stderr.puts(@optparser.help)
         exit 1
       end

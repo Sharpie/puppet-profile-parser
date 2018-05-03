@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   - Zipkin output no longer contains a redundant `span.kind` tag.
 
+  - The profile parser exits 1 and prints a clear error message if run
+    under a Ruby version older than 2.0.
+
 ### Changed
 
   - The `get` method of the Trace class is now private.
