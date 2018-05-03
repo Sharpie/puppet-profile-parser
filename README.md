@@ -14,7 +14,7 @@ The tool in this repository is the `puppet-profile-parser.rb` script. This
 script has no dependencies and can be run from any location where a Ruby
 interpreter is present on the `PATH`.
 
-The script is tested against Ruby 2.1 and newer.
+The script is tested against Ruby 2.0 and newer.
 
 The most recent stable release of the script can be downloaded here:
 

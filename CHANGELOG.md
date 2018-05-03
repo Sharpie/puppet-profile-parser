@@ -17,10 +17,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - HTTP requests are parsed explicitly and tagged with method, url and
     peer.certname (if available).
 
+  - Support for Ruby 2.0.
+
 ### Fixed
 
   - The script now exits with code 1 if an error is raised.
-  - The script now allows for a PROFILE message containing `]` characters. 
+
+  - The script now allows for a PROFILE message containing `]` characters.
 
   - Zipkin output no longer contains a redundant `span.kind` tag.
 

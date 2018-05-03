@@ -7,6 +7,8 @@ notifications:
 
 matrix:
   include:
+    - rvm: 2.0.0-p648
+      script: 'bundle exec rake spec:unit'
     - rvm: 2.1.9
       script: 'bundle exec rake spec:unit'
     - rvm: 2.4.3

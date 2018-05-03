@@ -546,12 +546,14 @@ module PuppetProfileParser
     def self.convert_match(match_data)
       # NOTE: The zip can be replaced with match.named_captures, which
       # was added in Ruby 2.4.
-      match_data.names.zip(match_data.captures).map do |k, v|
-        new_v = yield(k, v) if block_given?
-        v = new_v.nil? ? v : new_v
+      match_pairs = match_data.names.zip(match_data.captures).map do |k, v|
+                      new_v = yield(k, v) if block_given?
+                      v = new_v.nil? ? v : new_v
 
-        [k, v]
-      end.to_h
+                      [k, v]
+                    end
+
+      Hash[match_pairs]
     end
 
     def initialize
