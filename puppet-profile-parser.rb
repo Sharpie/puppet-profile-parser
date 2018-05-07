@@ -26,7 +26,7 @@ require 'csv'
 require 'time'
 require 'json'
 require 'digest/sha2'
-require 'rubygems/version'
+require 'rubygems/requirement'
 
 # Tools for parsing and formatting Puppet Server PROFILE logs
 #
