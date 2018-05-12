@@ -442,7 +442,7 @@ module PuppetProfileParser
                       data['name']
 
                     unless data['peer.hostname'].nil?
-                      data['http.url'] += ('/' + data['peer.hostname'])
+                      data['http.url'] += data['peer.hostname']
                     end
 
                     data
