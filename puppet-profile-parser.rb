@@ -569,11 +569,11 @@ module PuppetProfileParser
 
     # Parse traces from a logfile
     #
-    # @param file [String] Path to the logfile. Paths ending in `.gz` will
-    #   be read using a `Zlib::GzipReader`.
-    # @param file [IO] `IO` object that returns Puppet Server log lines.
-    #   The `close` method will be called on the `IO` instance as a result
-    #   of parsing.
+    # @param file [String, IO] A String instance giving a path to the logfile.
+    #   Paths ending in `.gz` will be read using a `Zlib::GzipReader`.
+    #   An `IO` object that returns Puppet Server log lines may also be passed.
+    #   The `close` method will be called on the passed `IO` instance when
+    #   parsing completes.
     #
     # @return [void]
     def parse_file(file)
