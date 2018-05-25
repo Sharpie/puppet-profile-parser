@@ -39,7 +39,7 @@ require 'rubygems/requirement'
 # @author Charlie Sharpsteen
 # @author Adrien Thebo
 module PuppetProfileParser
-  VERSION = '0.2.0'.freeze
+  VERSION = '0.3.0'.freeze
   REQUIRED_RUBY_VERSION = Gem::Requirement.new('>= 2.0')
 
   # Utility functions for terminal interaction
