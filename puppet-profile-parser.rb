@@ -929,11 +929,17 @@ module PuppetProfileParser
     end
   end
 
+  # Manage CLI execution
+  #
+  # This class provides logic for command line execution of the profile parser.
+  # The {#initialize} method handles parsing ARGV for configuration and the
+  # {#run} method parses the files and generates an exit code.
   class CLI
     def initialize(argv = [])
       @log_files = []
       @outputter = nil
       @options = {color: $stdout.tty? }
+      @action = :parse_logs
 
       @optparser = OptionParser.new do |parser|
         parser.banner = "Usage: puppet-profile-parser [options] puppetserver.log [...]"
@@ -957,10 +963,8 @@ module PuppetProfileParser
           @options[:color] = v
         end
 
-
         parser.on_tail('-h', '--help', 'Show help') do
-          $stdout.puts(parser.help)
-          exit 0
+          @action = :show_help
         end
 
         parser.on_tail('--debug', 'Enable backtraces from errors.') do
@@ -968,8 +972,7 @@ module PuppetProfileParser
         end
 
         parser.on_tail('--version', 'Show version') do
-          $stdout.puts(VERSION)
-          exit 0
+          @action = :show_version
         end
       end
 
@@ -991,13 +994,26 @@ module PuppetProfileParser
                    end
     end
 
+    # Parse files and print results to STDERR
+    #
+    # @return [Integer] An integer representing process exit code that can be
+    #   set by the caller.
     def run
+      case @action
+      when :show_help
+        $stdout.puts(@optparser.help)
+        return 0
+      when :show_version
+        $stdout.puts(VERSION)
+        return 0
+      end
+
       if not REQUIRED_RUBY_VERSION.satisfied_by?(Gem::Version.new(RUBY_VERSION))
         $stderr.puts("puppet-profile-parser requires Ruby #{REQUIRED_RUBY_VERSION}")
-        exit 1
+        return 1
       elsif @log_files.empty?
         $stderr.puts(@optparser.help)
-        exit 1
+        return 1
       end
 
       parser = LogParser.new
@@ -1005,6 +1021,8 @@ module PuppetProfileParser
       @log_files.each {|f| parser.parse_file(f)}
 
       @formatter.write(parser.traces)
+
+      return 0
     rescue => e
       message = if @options[:debug]
                   ["ERROR #{e.class}: #{e.message}",
@@ -1014,12 +1032,13 @@ module PuppetProfileParser
                 end
 
       $stderr.puts(message)
-      exit 1
+      return 1
     end
   end
 end
 
 
 if File.expand_path(__FILE__) == File.expand_path($PROGRAM_NAME)
-  PuppetProfileParser::CLI.new(ARGV).run
+  exit_status = PuppetProfileParser::CLI.new(ARGV).run
+  exit exit_status
 end
