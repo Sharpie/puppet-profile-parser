@@ -382,7 +382,7 @@ module PuppetProfileParser
     # Regex for extracting span id and duration
     COMMON_DATA = /(?<span_id>[\d\.]+)\s+
                    (?<message>.*)
-                   :\stook\s(?<duration>[\d\.]+)\sseconds$/x
+                   :\stook\s(?<duration>[\d\.]+)\sseconds\s*$/x
 
     FUNCTION_CALL = /Called (?<name>\S+)/
     RESOURCE_EVAL = /Evaluated resource (?<name>(?<puppet.resource_type>[\w:]+)\[(?<puppet.resource_title>.*)\])/
