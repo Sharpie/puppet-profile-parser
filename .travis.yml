@@ -9,7 +9,7 @@ matrix:
   include:
     - rvm: 2.0.0-p648
       script: 'bundle exec rake spec:unit'
-    - rvm: 2.1.9
+    - rvm: 2.4.9
       script: 'bundle exec rake spec:unit'
-    - rvm: 2.4.3
+    - rvm: 2.5.7
       script: 'bundle exec rake spec:unit'
