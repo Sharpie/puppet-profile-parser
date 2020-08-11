@@ -1,0 +1,12 @@
+{
+  "description": "Analyze puppetserver log with profiling information and produce a summary",
+  "parameters": {
+    "logs": {
+      "type": "Optional[String]",
+      "description": "One or more log files to analyze, space separated, can contain shell glob patterns and point to .gz files. Defaults to '/var/log/puppetlabs/puppetserver/puppetserver.log'"
+    }
+  },
+  "files": [
+    "puppet_profile_parser/files/puppet-profile-parser.rb"
+  ]
+}
